@@ -1,0 +1,15 @@
+# Proxmox API endpoint, including port and /api2/json suffix
+proxmox_api_url = "https://<proxmox_ip>:8006/api2/json"
+
+#API token ID in the format: user@auth!token_name
+#Example: root@pam!mytoken
+proxmox_api_token_id = "user@auth!token_name"
+
+# API token secret generated from proxmox
+proxmox_api_token = "your-proxmox-api-token"
+
+## Make sure that the ssh key exists since this will help provision the K3s cluster. You can generate a new key pair using ssh-keygen.
+ssh_private_key_path = "../../id_ed25519"
+
+## Make sure that the ssh public key exists since this will be added to the cluster nodes. You can generate a new key pair using ssh-keygen.
+ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1......."

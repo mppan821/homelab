@@ -1,0 +1,39 @@
+# Git Ignore File
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.log
+
+# Sensitive files (add specific ones)
+# *.key
+# *.secret
+
+# Build artifacts (if any local builds)
+# bin/
+# dist/
+
+id_ed25519
+id_ed25519.pub
+kubeconfig
+terraform.tfvars
+.terraform
+terraform.tfstate
+terraform.tfstate.backup
+clusters
+assets
+.github
+docs/MILESTONES.md
+docs/adr
