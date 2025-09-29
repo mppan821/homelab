@@ -10,12 +10,21 @@ This document outlines the recommended directory structure for organizing the ho
 │   ├── bootstrap.md                # Step-by-step setup guide
 │   └── directory_structure.md      # This file
 ├── infrastructure/                 # Infrastructure as Code (IaC)
-│   ├── terraform/                  # (If using Terraform for Proxmox/Cloud resources)
+│   ├── terraform/                  # Terraform for Proxmox/Cloud resources
 │   │   └── ...                     
-│   └── talos/                      # (If using Talos Linux)
-│       ├── talconfig.yaml          # Talos cluster configuration
-│       ├── talenv.yaml             # Talos environment variables
-│       └── ...                     
+│   └── kubernetes/                 # Post-bootstrap add-ons and Helm values
+│       ├── README.md
+│       └── addons/
+│           ├── cilium/
+│           ├── metallb/
+│           ├── cert-manager/
+│           └── external-dns/
+├── apps/                           # Kubectl-applied smoke tests
+│   └── sample-nginx/
+│       ├── base/                   # Shared manifests (Deployment, Service, Ingress)
+│       └── overlays/
+│           ├── production/
+│           └── staging/
 ├── clusters/                       # Kubernetes cluster configurations (GitOps root)
 │   └── my-homelab/                 # Configuration for a specific cluster
 │       ├── flux-system/            # FluxCD configuration (managed by Flux)

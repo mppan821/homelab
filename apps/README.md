@@ -1,19 +1,24 @@
 # Homelab Apps
 
-This directory stores standalone Kubernetes manifests that can be applied directly with `kubectl` during early cluster testing. Each sub-folder contains one application.
+This directory stores standalone Kubernetes manifests that can be applied directly with `kubectl` during early cluster testing. Each application keeps a `base/` folder for shared manifests and `overlays/` for environment-specific differences.
 
-To deploy an app, point `kubectl` at the cluster (see `docs/bootstrap.md` for kubeconfig steps) and apply the manifests:
+To deploy an app, point `kubectl` at the cluster (see `docs/bootstrap.md` for kubeconfig steps), update any environment variables noted for the overlay, and apply it with kustomize:
 
 ```bash
-kubectl apply -f apps/sample-nginx/
+# staging example
+kubectl apply -k apps/sample-nginx/overlays/staging/
+
+# production example
+kubectl apply -k apps/sample-nginx/overlays/production/
 ```
 
 Clean up when you are finished testing:
 
 ```bash
-kubectl delete -f apps/sample-nginx/
+kubectl delete -k apps/sample-nginx/overlays/staging/
+kubectl delete -k apps/sample-nginx/overlays/production/
 ```
 
 ## Available Apps
 
-- `sample-nginx/` – Minimal nginx Deployment and NodePort Service for cluster smoke testing. Once applied, reach it via `http://<node-ip>:30080` or by port-forwarding `kubectl port-forward deployment/sample-nginx 8080:80`.
+- `sample-nginx/` – Minimal nginx Deployment, NodePort Service, and optional Ingress. Set the desired hostname in each overlay’s `domain.env` file before applying. Access it immediately via `http://<node-ip>:30080` or, once DNS and cert-manager converge, through the configured host.

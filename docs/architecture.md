@@ -6,10 +6,10 @@ This document captures the current architecture of the homelab and the roadmap t
 
 - **Hypervisor:** A single Proxmox VE host (`192.168.0.250`) backed by local storage. All homelab workloads run as virtual machines on this host.
 - **Management Network:** `vmbr0` bridges the Proxmox host to the home LAN (`192.168.0.0/24`). The default gateway and DNS live on the home router (`192.168.0.1`).
-- **K3s VMs:**
-  - `k3s-control` – 2 vCPU / 4 GB RAM, static IP `192.168.0.100`.
-  - `k3s-node-1` – 2 vCPU / 4 GB RAM, static IP `192.168.0.101`.
-  - `k3s-node-2` – 2 vCPU / 2 GB RAM, static IP `192.168.0.102`.
+- **Kubernetes VMs:**
+  - `master-node` – 4 vCPU / 8 GB RAM, static IP `192.168.0.100`.
+  - `worker-node-1` – 4 vCPU / 8 GB RAM, static IP `192.168.0.101`.
+  - `worker-node-2` – 4 vCPU / 8 GB RAM, static IP `192.168.0.102`.
 - **Access:** SSH key authentication from the management workstation (`~/.ssh/id_ed25519`) is required for automation and manual maintenance.
 
 ## 2. Provisioning & Bootstrap Flow
@@ -21,18 +21,18 @@ All infrastructure under Proxmox is defined in `infrastructure/terraform/`.
    - Cloud-init injects static network configuration, user credentials, and an SSH public key.
    - VMs default to `vm_state = "running"` so they power on automatically after provisioning.
    - The Proxmox firewall is enabled per NIC; host-level rules govern ingress.
-2. **K3s Automation (`k3s.tf`)**
-   - `null_resource.k3s_control_install` waits for VM creation and installs the K3s server using the `INSTALL_K3S_EXEC` flags supplied via variables (default: `server --disable traefik`).
-   - `null_resource.k3s_worker_install` fan-outs to each worker, grabs the fresh node token from the control-plane VM, and runs the K3s agent installer.
-   - Provisioner scripts poll for SSH availability (up to ~5 minutes) before executing installers.
-   - The SSH private key path is configurable (`terraform.tfvars`).
+2. **Kubeadm Automation (`kubeadm.tf`)**
+   - `null_resource.control_plane_install` waits for VM creation, installs containerd plus the Kubernetes 1.34 kubeadm/kubelet/kubectl binaries, and runs `kubeadm init --pod-network-cidr=10.0.0.0/16` on the control plane.
+   - Helm is installed on the control plane and a baseline Cilium deployment is applied as part of bootstrap.
+   - `null_resource.worker_install` fans out to each worker, reuses the live join command from the control plane, and executes `kubeadm join` once the node is reachable.
+   - Provisioner scripts poll for SSH availability (up to ~5 minutes) before executing installers. The SSH private key path is configurable (`terraform.tfvars`).
 3. **Idempotency Controls**
-   - `k3s_install_revision` is a manual trigger. Bumping the value forces re-execution of the installers while leaving the VMs intact.
-   - Commands guard with `systemctl is-active` to avoid reinstalling K3s on healthy nodes.
+   - `kubeadm_install_revision` is a manual trigger. Bumping the value forces re-execution of the kubeadm and Helm steps while leaving the VMs intact.
+   - Commands guard with `kubeadm config images pull` and conditional checks so healthy nodes are not reinitialized unnecessarily.
 
 ## 3. Kubernetes Stack
 
-- **Distribution:** K3s (current default components only; Traefik disabled in Terraform to keep the ingress surface minimal until CNI/Ingress decisions are finalised).
+- **Distribution:** kubeadm on Ubuntu with containerd; Calico/Flannel are omitted in favour of Cilium deployed immediately after bootstrap.
 - **Planned Additions:** The roadmap mirrors the ADRs and `MILESTONES.md`:
   - **GitOps:** FluxCD for reconciling manifests in `clusters/homelab/`.
   - **Networking:** Cilium as the primary CNI, replacing the default Flannel.
@@ -47,8 +47,8 @@ homelab/
 ├── infrastructure/
 │   └── terraform/
 │       ├── cloud-init.tf      # Proxmox VM definitions and cloud-init metadata
-│       ├── k3s.tf             # K3s server/agent installation automation
-│       ├── main.tf            # Provider configuration
+│       ├── kubeadm.tf         # kubeadm bootstrap automation
+│       ├── providers.tf       # Provider configuration
 │       ├── terraform.tfvars   # Environment-specific secrets and SSH key reference
 │       └── variables.tf       # VM and installer inputs
 ├── clusters/

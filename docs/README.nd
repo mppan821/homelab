@@ -1,0 +1,103 @@
+# 🏡 Homelab Kubernetes Foundation Plan (kubeadm with Namespaces)
+
+## 🎯 Goal
+
+Build a **production-style Kubernetes homelab** on Proxmox (1 control plane, 2 worker nodes) using **kubeadm**.
+Use **namespaces** (`staging` and `production`) for environment separation.
+
+This approach keeps resource usage modest while still modelling:
+
+* Shared infrastructure with clear environment boundaries.
+* The ability to hibernate staging workloads by scaling replicas to zero.
+* A path to GitOps once FluxCD/Argo CD are introduced.
+
+---
+
+## 📦 Core Components & Install Order
+
+1. **Networking & Metrics**
+   * Cilium (CNI replacing kube-proxy’s default routing).
+   * metrics-server for HPA.
+   * kube-state-metrics + node-exporter for cluster insights.
+
+2. **Ingress & Certificates**
+   * NGINX Ingress Controller.
+   * Cert-Manager (Let’s Encrypt automation).
+   * Separate domains/paths for staging vs production, e.g. `immich.lab.example.com` and `staging.immich.lab.example.com`.
+
+3. **Storage**
+   * Longhorn (SSD for performance workloads, HDD for bulk storage).
+
+4. **Observability**
+   * Prometheus + Grafana.
+   * Loki + Promtail (logs).
+   * Optional Alertmanager.
+
+5. **Secrets & Configs**
+   * Sealed Secrets so encrypted secrets can live in Git.
+
+6. **Backup & DR**
+   * Velero backing namespaces and PVCs to MinIO, S3, or local storage.
+
+7. **GitOps**
+   * Argo CD (or FluxCD) with separate Applications per namespace (`immich-staging`, `immich-prod`).
+
+---
+
+## 🚀 App Deployments (Namespace Approach)
+
+* **Immich**
+  * Prod: `production/immich` (bound to HDD Longhorn storage).
+  * Staging: `staging/immich` (scaled to zero until testing).
+
+* **Joplin Server**
+  * Prod: `production/joplin`.
+  * Staging: `staging/joplin` (smaller DB requests/limits).
+
+* **Karakeep**
+  * Prod: `production/karakeep`.
+  * Staging: `staging/karakeep`.
+
+---
+
+## 🛠️ Workflow for Staging Apps
+
+1. Model each workload with a shared `base/` (Deployments, Services, etc.) plus `overlays/` per environment so hostname, scaling, and secrets diverge cleanly—see `apps/sample-nginx/` for an example.
+2. Deploy manifests to **both namespaces** (`production` and `staging`).
+3. Keep staging replicas at `0` by default:
+
+   ```yaml
+   replicas: 0
+   ```
+4. When testing, scale up:
+
+   ```bash
+   kubectl -n staging scale deploy immich --replicas=1
+   ```
+5. After testing, scale back down:
+
+   ```bash
+   kubectl -n staging scale deploy immich --replicas=0
+   ```
+
+---
+
+## 📅 Milestones
+
+1. **MVP 1 – Cluster Baseline**
+   * kubeadm + containerd + Cilium + metrics stack.
+
+2. **MVP 2 – External Access**
+   * NGINX Ingress + Cert-Manager + TLS test app.
+
+3. **MVP 3 – Storage Ready**
+   * Longhorn with SSD/HDD separation.
+
+4. **MVP 4 – Observability**
+   * Prometheus + Grafana dashboards, Loki logs.
+
+5. **MVP 5 – Secrets & Backups**
+   * Sealed Secrets + Velero backup/restore.
+
+6. **MVP 6 – GitOps with Namespaces**
+   * FluxCD/Argo CD syncing staging & production overlays.
