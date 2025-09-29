@@ -1,0 +1,3 @@
+kubeProxyReplacement: false
+k8sServiceHost: 192.168.0.100   # your control-plane IP
+k8sServicePort: 6443

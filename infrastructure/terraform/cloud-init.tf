@@ -47,8 +47,8 @@ resource "proxmox_vm_qemu" "cloud-init" {
     scsi {
       scsi0 {
         disk {
-          size      = "32G"
-          storage   = "local"
+          size      = each.value.disk_size
+          storage   = each.value.storage
           replicate = "true"
         }
       }

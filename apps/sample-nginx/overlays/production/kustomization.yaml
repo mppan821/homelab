@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: production
+resources:
+  - ../../base
+  - namespace.yaml
+configMapGenerator:
+  - name: sample-nginx-config
+    envs:
+      - domain.env
+generatorOptions:
+  disableNameSuffixHash: true
+vars:
+  - name: NGINX_HOST
+    objref:
+      apiVersion: v1
+      kind: ConfigMap
+      name: sample-nginx-config
+    fieldref:
+      fieldpath: data.NGINX_HOST
