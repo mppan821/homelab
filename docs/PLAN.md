@@ -120,11 +120,19 @@ You should see the control plane and both workers in the `Ready` state.
 ## 5. Core Metrics
 
 ```bash
-kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
+helm repo update
+helm install metrics-server metrics-server/metrics-server \
+  --namespace kube-system \
+  --set args={"--kubelet-insecure-tls"} \
+  --set apiService.create=true
+
+## state metrics is needed for Elastic Cloud
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
-helm install kube-state-metrics prometheus-community/kube-state-metrics -n kube-system
-helm install node-exporter prometheus-community/prometheus-node-exporter -n kube-system
+helm install kube-state-metrics prometheus-community/kube-state-metrics \
+  --namespace kube-system \
+  --set fullnameOverride=kube-state-metrics
 ```
 
 ---
