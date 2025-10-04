@@ -4,20 +4,14 @@ This guide shows how to add the Weave GitOps UI so you can explore Flux reconcil
 
 ## 1. Prepare credentials
 
-The chart expects a bcrypt-hashed password. Generate one and create a secret that stores both the username and the hash:
+The chart ships with a default admin account (username `admin`). Decide on a password and keep the bcrypt hash handy if you want to rotate it later:
 
 ```bash
 htpasswd -nbB admin 'change-me' | cut -d':' -f2
 # copy the hash output (starts with $2y$...)
-
-kubectl create namespace weave-gitops
-kubectl create secret generic weave-gitops-admin \
-  --namespace weave-gitops \
-  --from-literal=username=admin \
-  --from-literal=passwordHash='<bcrypt-hash-from-htpasswd>'
 ```
 
-> Tip: replace `change-me` with your own strong password; you can delete and recreate the secret later to rotate credentials.
+> Tip: updating the `passwordHash` in the HelmRelease and reconciling Flux rotates the dashboard password.
 
 ## 2. Add the HelmRepository to Flux
 
