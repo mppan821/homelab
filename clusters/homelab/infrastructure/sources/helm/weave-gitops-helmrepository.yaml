@@ -6,4 +6,6 @@ metadata:
 spec:
   interval: 1h
   type: oci
-  url: oci://ghcr.io/weaveworks/weave-gitops-chart
+  url: oci://ghcr.io/weaveworks/charts
+  #secretRef:
+  #         name: weave-gitops-regcred
