@@ -109,6 +109,11 @@ kubectl create ns flux-system
      --username='GITHUB_EMAIL_ADDRESS' \
      --password='GITHUB_PAT_TOKEN'
    ```
+4. Apply the Cert-Manager and Metal LB CRDs as they are not part of helm: 
+```bash
+kubectl apply --server-side -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.crds.yaml
+kubectl apply --server-side -k "github.com/metallb/metallb/config/crd?ref=v0.15.2"
+```
 5. **Apply the Flux system manifests** shipped with this repository: `kubectl apply -k ../../clusters/homelab/flux-system`. This installs the Flux controllers and configures them to reconcile `clusters/homelab`.
 6. **Verify reconciliation** with `flux get sources git` and `flux get kustomizations`. Expect the `homelab` `Kustomization` to report `Ready=True`.
 7. **Seed required secrets** before the add-ons converge: for example, `kubectl create secret generic cloudflare-api-key -n cert-manager --from-literal=apiKey=<Cloudflare token>` for cert-manager DNS challenges and the same secret in `external-dns`.
