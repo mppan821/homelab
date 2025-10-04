@@ -24,6 +24,13 @@ spec:
   values:
     adminUser:
       create: false
-      passwordHash: weave-gitops-admin
+      existingSecret: weave-gitops-admin
+    clusterUser:
+      serviceAccount:
+        create: false
+        name: weave-gitops-user
+      authSecret:
+        create: false
+        name: cluster-user-auth
     service:
       type: ClusterIP

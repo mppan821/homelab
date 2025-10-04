@@ -119,6 +119,7 @@ kubectl create ns flux-system
 - Review the GitOps definitions in `../clusters/homelab/infrastructure/` (Cilium, cert-manager, ExternalDNS, MetalLB, Longhorn, metrics-server) and adjust chart values as your environment evolves.
 - Once storage reconciles, confirm `kubectl get sc` shows `longhorn` marked as `(default)` and run `kubectl -n longhorn-system get pods` to ensure the data plane is healthy.
 - Optional: Deploy the Flux UI by following `docs/weave-gitops-ui.md` (Weave GitOps), then port-forward or secure an ingress before exposing it.
+- When enabling the UI, ensure the `weave-gitops-admin` secret (bcrypt password) and `cluster-user-auth` service-account token are seeded as described in the guide so the pod can start.
 - Layer on the observability stack and additional services following the roadmap in `docs/architecture.md` and the ADRs, committing the manifests under `clusters/homelab`.
 - Commit any environment-specific overrides (without secrets) to keep the bootstrap repeatable.
 - Tune `vm_configs` or `kubeadm_install_revision` to change resources, IPs, or force reconfiguration.

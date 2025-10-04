@@ -31,7 +31,8 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1h
-  url: https://charts.gitops.weave.works
+  type: oci
+  url: oci://ghcr.io/weaveworks/charts
 ```
 
 Update `clusters/homelab/infrastructure/sources/helm/kustomization.yaml` to include the new repository.
@@ -48,6 +49,43 @@ metadata:
   labels:
     toolkit.fluxcd.io/tenant: platform
   name: weave-gitops
+```
+
+`serviceaccount.yaml`
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: weave-gitops-user
+  namespace: weave-gitops
+```
+
+`clusterrolebinding.yaml`
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: weave-gitops-user
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: weave-gitops-user
+    namespace: weave-gitops
+```
+
+`clusteruser-secret.yaml`
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cluster-user-auth
+  namespace: weave-gitops
+  annotations:
+    kubernetes.io/service-account.name: weave-gitops-user
+type: kubernetes.io/service-account-token
 ```
 
 `helmrelease.yaml`
@@ -79,6 +117,13 @@ spec:
     adminUser:
       create: false
       existingSecret: weave-gitops-admin
+    clusterUser:
+      serviceAccount:
+        create: false
+        name: weave-gitops-user
+      authSecret:
+        create: false
+        name: cluster-user-auth
     service:
       type: ClusterIP
 ```
@@ -89,6 +134,9 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - namespace.yaml
+  - serviceaccount.yaml
+  - clusterrolebinding.yaml
+  - clusteruser-secret.yaml
   - helmrelease.yaml
 ```
 
@@ -98,7 +146,7 @@ Add the directory to `clusters/homelab/infrastructure/addons/kustomization.yaml`
 
 ```bash
 kubectl apply -k clusters/homelab/flux-system
-flux reconcile kustomization homelab --with-source
+flux reconcile kustomization homelab
 flux get helmreleases -n flux-system weave-gitops
 ```
 
