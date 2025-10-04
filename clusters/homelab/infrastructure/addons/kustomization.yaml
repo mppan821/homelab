@@ -7,3 +7,4 @@ resources:
   - longhorn
   - metallb
   - metrics-server
+  - weave-gitops

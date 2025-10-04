@@ -6,5 +6,5 @@ resources:
   - external-dns-helmrepository.yaml
   - metallb-helmrepository.yaml
   - metrics-server-helmrepository.yaml
-  - rancher-helmrepository.yaml
   - longhorn-helmrepository.yaml
+  - weave-gitops-helmrepository.yaml
