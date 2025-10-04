@@ -22,12 +22,13 @@ Flux continuously reconciles the following Helm releases under `clusters/homelab
 
 - **Networking:** `cilium`, `metallb` (with address pool and L2 advertisement).
 - **Security & Certificates:** `cert-manager`, `external-dns` (Cloudflare integration).
-- **Storage:** `longhorn` (default storage class) and `local-path-provisioner` (scratch volumes).
+- **Storage:** `longhorn` (default storage class).
 - **Metrics:** `metrics-server`.
+- **Optional UI:** Weave GitOps dashboard (see `docs/weave-gitops-ui.md`).
 
 After Flux reports the add-ons as `Ready`:
 
-1. Check storage classes (`kubectl get sc`) and ensure `longhorn` is default while `local-path` is available.
+1. Check storage classes (`kubectl get sc`) and ensure `longhorn` is default.
 2. Inspect controller pods for health, e.g. `kubectl -n longhorn-system get pods`, `kubectl -n metallb-system get pods`.
 3. Confirm certificates issue successfully through `cert-manager` (`kubectl get certificaterequests -A`).
 
@@ -41,7 +42,7 @@ After Flux reports the add-ons as `Ready`:
 
 - [ ] `terraform apply` succeeds with no drift.
 - [ ] `flux get kustomizations` shows `homelab`, all infrastructure add-ons, and application Kustomizations in `Ready` state.
-- [ ] `kubectl get sc` lists `longhorn (default)` and `local-path`.
+- [ ] `kubectl get sc` lists `longhorn (default)`.
 - [ ] `kubectl get ingress -A` reflects expected DNS entries once ExternalDNS syncs.
 - [ ] Sample nginx staging and production environments are reachable (`kubectl get svc -n staging sample-nginx`).
 

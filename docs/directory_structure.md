@@ -8,6 +8,7 @@ This document outlines the recommended directory structure for organizing the ho
 ├── docs/                           # Detailed documentation
 │   ├── architecture.md             # In-depth architecture details
 │   ├── bootstrap.md                # Step-by-step setup guide
+│   ├── weave-gitops-ui.md          # Optional Flux UI (Weave GitOps) instructions
 │   └── directory_structure.md      # This file
 ├── infrastructure/                 # Infrastructure as Code (IaC)
 │   ├── terraform/                  # Terraform for Proxmox resources
@@ -31,7 +32,6 @@ This document outlines the recommended directory structure for organizing the ho
 │       │       ├── cert-manager/
 │       │       ├── cilium/
 │       │       ├── external-dns/
-│       │       ├── local-path-provisioner/
 │       │       ├── longhorn/
 │       │       ├── metallb/
 │       │       └── metrics-server/

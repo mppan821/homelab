@@ -10,6 +10,8 @@ This approach keeps resource usage modest while still modelling:
 * Shared infrastructure with clear environment boundaries.
 * The ability to hibernate staging workloads by scaling replicas to zero.
 * FluxCD already governs the platform add-ons and manages the sample nginx app as a reference implementation; this plan focuses on extending GitOps to additional application overlays and release workflows.
+* If Flux reports missing CRDs for a HelmRelease (e.g., cert-manager or MetalLB), install the upstream CRDs once and re-run `flux reconcile kustomization homelab --with-source`.
+* Optionally deploy the Weave GitOps UI by following `docs/weave-gitops-ui.md` for a read-only dashboard.
 
 ---
 
@@ -27,7 +29,6 @@ This approach keeps resource usage modest while still modelling:
 
 3. **Storage**
    * Longhorn (SSD for performance workloads, HDD for bulk storage) managed via Flux.
-* Local Path Provisioner (scratch/local testing volumes).
 
 4. **Observability**
    * Prometheus + Grafana.

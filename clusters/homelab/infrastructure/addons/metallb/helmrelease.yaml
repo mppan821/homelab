@@ -11,7 +11,7 @@ spec:
         kind: HelmRepository
         name: metallb
         namespace: flux-system
-      version: 0.14.5
+      version: 0.15.2
   install:
     remediation:
       retries: -1

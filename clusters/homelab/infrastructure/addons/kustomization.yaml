@@ -4,7 +4,6 @@ resources:
   - cilium
   - cert-manager
   - external-dns
-  - local-path-provisioner
   - longhorn
   - metallb
   - metrics-server

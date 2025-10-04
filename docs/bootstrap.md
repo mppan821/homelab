@@ -95,11 +95,14 @@ Re-running `terraform apply` is idempotent; bump `kubeadm_install_revision` in `
 
 1. **Install the Flux CLI** on your workstation (`brew install fluxcd/tap/flux` on macOS or see the [Flux install docs](https://fluxcd.io/docs/installation/)).
 2. **Create an SSH deploy key** dedicated to Flux (e.g., `ssh-keygen -t ed25519 -f ~/.ssh/flux-system`). Add the public key to the GitHub repo (`Settings → Deploy keys → Add deploy key`, enable write access if Flux should push changes).
-3. Install the Flux CRDs: kubectl apply -k "github.com/fluxcd/flux2/manifests/install?ref=v2.2.3"
+3. Install the Flux CRDs: 
+```bash
+kubectl apply -k 'github.com/fluxcd/flux2/manifests/install?ref=v2.7.0'
+```
 4. **Publish the private key to the cluster:**
-   ```bash
-   export KUBECONFIG=$PWD/kubeconfig
-   kubectl create ns flux-system
+```bash
+export KUBECONFIG=$PWD/kubeconfig
+kubectl create ns flux-system
    flux create secret git homelab-git \
      --url=https://github.com/mppan821/homelab.git \
      --namespace=flux-system \
@@ -113,8 +116,9 @@ Re-running `terraform apply` is idempotent; bump `kubeadm_install_revision` in `
 ## 5. Next Steps
 
 - Update the hostnames in `../apps/sample-nginx/overlays/{staging,production}/domain.env`, commit, and watch `flux get kustomizations` until `sample-nginx-staging` and `sample-nginx-production` report `Ready=True`. Use `kubectl get svc -n staging sample-nginx` (or `production`) to confirm service exposure once reconciling is complete.
-- Review the GitOps definitions in `../clusters/homelab/infrastructure/` (Cilium, cert-manager, ExternalDNS, MetalLB, Local Path Provisioner, Longhorn, metrics-server) and adjust chart values as your environment evolves.
-- Once storage reconciles, confirm `kubectl get sc` shows `longhorn` marked as `(default)` with `local-path` available for lightweight workloads, and run `kubectl -n longhorn-system get pods` to ensure the data plane is healthy.
+- Review the GitOps definitions in `../clusters/homelab/infrastructure/` (Cilium, cert-manager, ExternalDNS, MetalLB, Longhorn, metrics-server) and adjust chart values as your environment evolves.
+- Once storage reconciles, confirm `kubectl get sc` shows `longhorn` marked as `(default)` and run `kubectl -n longhorn-system get pods` to ensure the data plane is healthy.
+- Optional: Deploy the Flux UI by following `docs/weave-gitops-ui.md` (Weave GitOps), then port-forward or secure an ingress before exposing it.
 - Layer on the observability stack and additional services following the roadmap in `docs/architecture.md` and the ADRs, committing the manifests under `clusters/homelab`.
 - Commit any environment-specific overrides (without secrets) to keep the bootstrap repeatable.
 - Tune `vm_configs` or `kubeadm_install_revision` to change resources, IPs, or force reconfiguration.
@@ -126,6 +130,8 @@ Re-running `terraform apply` is idempotent; bump `kubeadm_install_revision` in `
 - **Nodes not joining:** Ensure the workers can reach `https://192.168.0.100:6443` and that `kubeadm token create --print-join-command` returns a valid token.
 - **MetalLB services not reachable:** Confirm the IP range defined in `../clusters/homelab/infrastructure/addons/metallb/addresspool.yaml` stays inside the same LAN as your nodes (e.g., `192.168.0.200-210` if the cluster sits on `192.168.0.0/24`). Addresses outside the local subnet will not route over Wi-Fi/LAN clients.
 - **Cert-manager stuck on challenges:** Make sure the `letsencrypt-cloudflare` `ClusterIssuer` shows `Ready=True` (`kubectl describe clusterissuer letsencrypt-cloudflare`) and that wildcard/host-specific challenges in `kubectl get challenges -A` report `Valid`. If they remain `Pending`, verify the Cloudflare token and DNS propagation.
+- **Flux reports missing CRDs:** Install upstream CRDs before rerunning reconciliation (e.g., cert-manager: `kubectl apply --server-side -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.crds.yaml`, MetalLB: `kubectl apply --server-side -k "github.com/metallb/metallb/config/crd?ref=v0.14.5"`).
+- **HelmRelease fails with Invalid chart reference:** Confirm the chart/version exists in the referenced HelmRepository. If not, update the repo or remove the release (e.g., we removed local-path-provisioner in favor of Longhorn).
 - **ExternalDNS not updating records:** Check the ExternalDNS deployment logs (`kubectl logs -n external-dns deploy/external-dns`) and confirm the Cloudflare API token secret matches the values in `../clusters/homelab/infrastructure/addons/external-dns/helmrelease.yaml`. Successful syncs appear as `Applied desired changes` entries.
 
 Refer to `docs/adr/004-terraform-kubeadm-bootstrap.md` for the detailed rationale behind automating kubeadm with Terraform provisioners.

@@ -33,7 +33,7 @@ All infrastructure under Proxmox is defined in `infrastructure/terraform/`.
 ## 3. Kubernetes Stack
 
 - **Distribution:** kubeadm on Ubuntu with containerd; Calico/Flannel are omitted in favour of Cilium deployed immediately after bootstrap.
-- **GitOps:** FluxCD reconciles manifests in `clusters/homelab/`, managing Helm releases for the platform add-ons (Cilium, cert-manager, ExternalDNS, MetalLB, Local Path Provisioner, Longhorn, metrics-server) and providing the landing zone for future workloads.
+- **GitOps:** FluxCD reconciles manifests in `clusters/homelab/`, managing Helm releases for the platform add-ons (Cilium, cert-manager, ExternalDNS, MetalLB, Longhorn, metrics-server) and providing the landing zone for future workloads. The optional Weave GitOps UI (`docs/weave-gitops-ui.md`) offers a read view of reconciliations.
 - **Roadmap Additions:** The remaining platform goals mirror the ADRs and `MILESTONES.md`:
   - **Security:** Authentik, Vault + External Secrets Operator, OPA Gatekeeper, Falco, Trivy Operator.
   - **Observability:** Prometheus, Grafana, Loki, Jaeger, and Cilium Hubble.

@@ -8,7 +8,7 @@ This repository codifies my homelab, built around a kubeadm-managed Kubernetes c
 - **Kubernetes:** One kubeadm control plane (`192.168.0.100`) and two workers (`192.168.0.101-102`) created via Terraform.
 - **Networking:** All VMs attach to `vmbr0` on the main LAN; DNS and routing are provided by the home router (`192.168.0.1`).
 - **Automation:** Terraform `null_resource` provisioners install containerd, the latest Kubernetes 1.34 kubeadm/kubelet/kubectl toolchain, initialize the control plane, and automatically join the worker nodes once they are reachable.
-- **GitOps & Apps:** FluxCD reconciles the GitOps tree under `clusters/homelab`, managing networking, security, and storage add-ons (Cilium, cert-manager, External DNS, MetalLB, Local Path Provisioner, Longhorn, metrics-server) while serving as the landing zone for future workloads.
+- **GitOps & Apps:** FluxCD reconciles the GitOps tree under `clusters/homelab`, managing networking, security, and storage add-ons (Cilium, cert-manager, External DNS, MetalLB, Longhorn, metrics-server) while serving as the landing zone for future workloads.
 
 ## Prerequisites & Quick Start
 
@@ -64,7 +64,7 @@ graph TD
 - `infrastructure/terraform/` – Proxmox VM and kubeadm automation.
 - `infrastructure/kubernetes/` – Scratchpad for manifests that have not yet been promoted into Flux (see README inside).
 - `clusters/` – Flux GitOps tree for platform services and applications.
-- `docs/` – Architecture notes, bootstrap instructions, and ADRs.
+- `docs/` – Architecture notes, bootstrap instructions, and ADRs (see `docs/weave-gitops-ui.md` for the optional Flux UI).
 - `apps/` – Base manifests for workloads; Flux Kustomizations under `clusters/homelab/apps/` reference these (e.g., sample nginx).
 
 See `docs/architecture.md` for the full architecture narrative and `docs/bootstrap.md` for reproducible bootstrap steps.
