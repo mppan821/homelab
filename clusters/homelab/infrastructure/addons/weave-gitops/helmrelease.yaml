@@ -22,15 +22,10 @@ spec:
     remediation:
       retries: 3
   values:
+    WEAVE_GITOPS_FEATURE_TELEMETRY: "true"
     adminUser:
-      create: false
-      existingSecret: weave-gitops-admin
-    clusterUser:
-      serviceAccount:
-        create: false
-        name: weave-gitops-user
-      authSecret:
-        create: false
-        name: cluster-user-auth
+      create: true
+      username: admin
+      passwordHash: "$2y$05$E7PO0lrzjRrWK9lMCAjc4evB3AnGgGebcur.lHl402i0SLujwDNJW"
     service:
       type: ClusterIP
