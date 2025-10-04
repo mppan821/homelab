@@ -9,7 +9,7 @@ This approach keeps resource usage modest while still modelling:
 
 * Shared infrastructure with clear environment boundaries.
 * The ability to hibernate staging workloads by scaling replicas to zero.
-* A path to GitOps once FluxCD/Argo CD are introduced.
+* FluxCD already governs the platform add-ons and manages the sample nginx app as a reference implementation; this plan focuses on extending GitOps to additional application overlays and release workflows.
 
 ---
 
@@ -26,7 +26,8 @@ This approach keeps resource usage modest while still modelling:
    * Separate domains/paths for staging vs production, e.g. `immich.lab.example.com` and `staging.immich.lab.example.com`.
 
 3. **Storage**
-   * Longhorn (SSD for performance workloads, HDD for bulk storage).
+   * Longhorn (SSD for performance workloads, HDD for bulk storage) managed via Flux.
+* Local Path Provisioner (scratch/local testing volumes).
 
 4. **Observability**
    * Prometheus + Grafana.
@@ -40,7 +41,7 @@ This approach keeps resource usage modest while still modelling:
    * Velero backing namespaces and PVCs to MinIO, S3, or local storage.
 
 7. **GitOps**
-   * Argo CD (or FluxCD) with separate Applications per namespace (`immich-staging`, `immich-prod`).
+   * FluxCD Kustomizations per namespace (`immich-staging`, `immich-prod`) to drive continuous delivery. (Argo CD remains an alternative if requirements change.)
 
 ---
 
@@ -100,4 +101,4 @@ This approach keeps resource usage modest while still modelling:
    * Sealed Secrets + Velero backup/restore.
 
 6. **MVP 6 – GitOps with Namespaces**
-   * FluxCD/Argo CD syncing staging & production overlays.
+   * FluxCD syncing staging & production overlays with environment-specific policies.

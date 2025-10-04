@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - cilium-helmrepository.yaml
+  - cert-manager-helmrepository.yaml
+  - external-dns-helmrepository.yaml
+  - metallb-helmrepository.yaml
+  - metrics-server-helmrepository.yaml
+  - rancher-helmrepository.yaml
+  - longhorn-helmrepository.yaml

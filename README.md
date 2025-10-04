@@ -8,7 +8,7 @@ This repository codifies my homelab, built around a kubeadm-managed Kubernetes c
 - **Kubernetes:** One kubeadm control plane (`192.168.0.100`) and two workers (`192.168.0.101-102`) created via Terraform.
 - **Networking:** All VMs attach to `vmbr0` on the main LAN; DNS and routing are provided by the home router (`192.168.0.1`).
 - **Automation:** Terraform `null_resource` provisioners install containerd, the latest Kubernetes 1.34 kubeadm/kubelet/kubectl toolchain, initialize the control plane, and automatically join the worker nodes once they are reachable.
-- **GitOps & Apps (roadmap):** FluxCD, observability stack, and application manifests live under `clusters/` and will be expanded as the lab matures.
+- **GitOps & Apps:** FluxCD reconciles the GitOps tree under `clusters/homelab`, managing networking, security, and storage add-ons (Cilium, cert-manager, External DNS, MetalLB, Local Path Provisioner, Longhorn, metrics-server) while serving as the landing zone for future workloads.
 
 ## Prerequisites & Quick Start
 
@@ -21,7 +21,7 @@ Once prerequisites are in place:
 1. `terraform -chdir=infrastructure/terraform apply` to clone the template VMs and install Kubernetes with kubeadm.
 2. Copy the kubeconfig down (`scp -i id_ed25519 ubuntu@192.168.0.100:/etc/kubernetes/admin.conf kubeconfig`), replace the server IP if needed, run `chmod 600 kubeconfig`, and export `KUBECONFIG=$PWD/kubeconfig`.
 3. Verify access with `kubectl get pods -A` or `kubectl get nodes -o wide`.
-4. Update `apps/sample-nginx/overlays/staging/domain.env` with a hostname you control, then `kubectl apply -k apps/sample-nginx/overlays/staging/`. Reach it via `http://<node-ip>:30080` immediately or wait for DNS + TLS to validate through the Ingress. (A production overlay lives beside it for multi-namespace smoke testing.)
+4. Update the sample app hostnames in `apps/sample-nginx/overlays/{staging,production}/domain.env`, commit the change, and let Flux reconcile both environments. Once the `sample-nginx-*` Kustomizations report Ready, reach the staging service via `http://<node-ip>:30080` or wait for DNS + TLS through the Ingress.
 
 See `docs/bootstrap.md` for the full walkthrough and troubleshooting tips.
 
@@ -46,7 +46,7 @@ graph TD
     end
 
     subgraph "Kubernetes Cluster"
-        Flux["FluxCD (planned)"]
+        Flux["FluxCD"]
         Monitoring["Observability stack (planned)"]
         Apps["Homelab apps (planned)"]
         VMControl --> Flux
@@ -62,9 +62,9 @@ graph TD
 ## Key Directories
 
 - `infrastructure/terraform/` – Proxmox VM and kubeadm automation.
-- `infrastructure/kubernetes/` – Post-bootstrap add-ons (Helm values, manifests) grouped by component.
-- `clusters/` – Flux GitOps tree for future workloads.
+- `infrastructure/kubernetes/` – Scratchpad for manifests that have not yet been promoted into Flux (see README inside).
+- `clusters/` – Flux GitOps tree for platform services and applications.
 - `docs/` – Architecture notes, bootstrap instructions, and ADRs.
-- `apps/` – Simple manifests for kubectl-driven tests (e.g., sample nginx).
+- `apps/` – Base manifests for workloads; Flux Kustomizations under `clusters/homelab/apps/` reference these (e.g., sample nginx).
 
 See `docs/architecture.md` for the full architecture narrative and `docs/bootstrap.md` for reproducible bootstrap steps.

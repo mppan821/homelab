@@ -10,46 +10,40 @@ This document outlines the recommended directory structure for organizing the ho
 │   ├── bootstrap.md                # Step-by-step setup guide
 │   └── directory_structure.md      # This file
 ├── infrastructure/                 # Infrastructure as Code (IaC)
-│   ├── terraform/                  # Terraform for Proxmox/Cloud resources
+│   ├── terraform/                  # Terraform for Proxmox resources
 │   │   └── ...                     
-│   └── kubernetes/                 # Post-bootstrap add-ons and Helm values
-│       ├── README.md
-│       └── addons/
-│           ├── cilium/
-│           ├── metallb/
-│           ├── cert-manager/
-│           └── external-dns/
-├── apps/                           # Kubectl-applied smoke tests
+│   └── kubernetes/                 # Temporary manifests not yet under GitOps
+│       └── README.md
+├── apps/                           # Base manifests for workloads referenced by Flux
 │   └── sample-nginx/
 │       ├── base/                   # Shared manifests (Deployment, Service, Ingress)
 │       └── overlays/
 │           ├── production/
 │           └── staging/
-├── clusters/                       # Kubernetes cluster configurations (GitOps root)
-│   └── my-homelab/                 # Configuration for a specific cluster
-│       ├── flux-system/            # FluxCD configuration (managed by Flux)
-│       ├── apps/                   # Application configurations
-│       │   ├── sonarr/             # Example app
+├── clusters/                       # GitOps root watched by Flux
+│   └── homelab/
+│       ├── flux-system/            # Flux bootstrap manifests (gotk-components/sync)
+│       ├── infrastructure/
+│       │   ├── kustomization.yaml
+│       │   ├── sources/
+│       │   │   └── helm/           # HelmRepository definitions
+│       │   └── addons/
+│       │       ├── cert-manager/
+│       │       ├── cilium/
+│       │       ├── external-dns/
+│       │       ├── local-path-provisioner/
+│       │       ├── longhorn/
+│       │       ├── metallb/
+│       │       └── metrics-server/
+│       ├── apps/                   # Flux-managed workloads
+│       │   ├── kustomization.yaml
+│       │   ├── staging/
 │       │   │   ├── kustomization.yaml
-│       │   │   ├── deployment.yaml
-│       │   │   ├── service.yaml
-│       │   │   ├── ingress.yaml
-│       │   │   └── ...
-│       │   ├── syncthing/
-│       │   ├── openwebui/
-│       │   ├── gitlab/
-│       │   ├── wazuh/
-│       │   └── ...                 # Other apps
-│       ├── core/                   # Core services configurations
-│       │   ├── authentik/
-│       │   ├── vault/
-│       │   ├── monitoring/
-│       │   │   ├── loki/
-│       │   │   ├── prometheus/
-│       │   │   └── grafana/
-│       │   ├── ingress-nginx/      # Or traefik
-│       │   └── ...
-│       └── ...                     # Other cluster-level configs (e.g., namespaces, RBAC)
+│       │   │   └── sample-nginx.yaml
+│       │   └── production/
+│       │       ├── kustomization.yaml
+│       │       └── sample-nginx.yaml
+│       └── kustomization.yaml      # Entrypoint for the cluster reconciliation
 ├── scripts/                        # Utility scripts for setup, maintenance, etc.
 │   └── ...
 ├── .github/

@@ -91,21 +91,47 @@ Re-running `terraform apply` is idempotent; bump `kubeadm_install_revision` in `
    ```
    Optionally copy `kubeconfig` to `~/.kube/config` if you want kubectl to pick it up by default.
 
-## 4. Next Steps
+## 4. Bootstrap Flux GitOps
 
-- Update `../../apps/sample-nginx/overlays/staging/domain.env` to set a hostname you control, then deploy the smoke test with `kubectl apply -k ../../apps/sample-nginx/overlays/staging/` and validate it via `kubectl get svc -n staging sample-nginx`. A production overlay is also available under `overlays/production/` for parity checks.
-- Reconcile the add-ons under `../../infrastructure/kubernetes/addons/` (Cilium, cert-manager, ExternalDNS, MetalLB) following the commands in `docs/PLAN.md`. Terraform applies a minimal Cilium config—feel free to re-run Helm with your overrides.
-- Install FluxCD and the observability stack according to the roadmap in `docs/architecture.md` and ADRs.
+1. **Install the Flux CLI** on your workstation (`brew install fluxcd/tap/flux` on macOS or see the [Flux install docs](https://fluxcd.io/docs/installation/)).
+2. **Create an SSH deploy key** dedicated to Flux (e.g., `ssh-keygen -t ed25519 -f ~/.ssh/flux-system`). Add the public key to the GitHub repo (`Settings → Deploy keys → Add deploy key`, enable write access if Flux should push changes).
+3. Install the Flux CRDs: kubectl apply -k "github.com/fluxcd/flux2/manifests/install?ref=v2.2.3"
+4. **Publish the private key to the cluster:**
+   ```bash
+   export KUBECONFIG=$PWD/kubeconfig
+   kubectl create ns flux-system
+   flux create secret git homelab-git \
+     --url=https://github.com/mppan821/homelab.git \
+     --namespace=flux-system \
+     --username='GITHUB_EMAIL_ADDRESS' \
+     --password='GITHUB_PAT_TOKEN'
+   ```
+5. **Apply the Flux system manifests** shipped with this repository: `kubectl apply -k ../../clusters/homelab/flux-system`. This installs the Flux controllers and configures them to reconcile `clusters/homelab`.
+6. **Verify reconciliation** with `flux get sources git` and `flux get kustomizations`. Expect the `homelab` `Kustomization` to report `Ready=True`.
+7. **Seed required secrets** before the add-ons converge: for example, `kubectl create secret generic cloudflare-api-key -n cert-manager --from-literal=apiKey=<Cloudflare token>` for cert-manager DNS challenges and the same secret in `external-dns`.
+
+## 5. Next Steps
+
+- Update the hostnames in `../apps/sample-nginx/overlays/{staging,production}/domain.env`, commit, and watch `flux get kustomizations` until `sample-nginx-staging` and `sample-nginx-production` report `Ready=True`. Use `kubectl get svc -n staging sample-nginx` (or `production`) to confirm service exposure once reconciling is complete.
+- Review the GitOps definitions in `../clusters/homelab/infrastructure/` (Cilium, cert-manager, ExternalDNS, MetalLB, Local Path Provisioner, Longhorn, metrics-server) and adjust chart values as your environment evolves.
+- Once storage reconciles, confirm `kubectl get sc` shows `longhorn` marked as `(default)` with `local-path` available for lightweight workloads, and run `kubectl -n longhorn-system get pods` to ensure the data plane is healthy.
+- Layer on the observability stack and additional services following the roadmap in `docs/architecture.md` and the ADRs, committing the manifests under `clusters/homelab`.
 - Commit any environment-specific overrides (without secrets) to keep the bootstrap repeatable.
 - Tune `vm_configs` or `kubeadm_install_revision` to change resources, IPs, or force reconfiguration.
 
-## 5. Troubleshooting
+## 6. Troubleshooting
 
 - **SSH failures:** Verify `ssh_private_key_path` points to the correct private key and that Proxmox firewall rules allow SSH.
 - **kubeadm init issues:** Check `sudo journalctl -u kubelet -f` on `master-node` and confirm containerd is healthy (`sudo systemctl status containerd`).
 - **Nodes not joining:** Ensure the workers can reach `https://192.168.0.100:6443` and that `kubeadm token create --print-join-command` returns a valid token.
-- **MetalLB services not reachable:** Confirm the IP range defined in `infrastructure/kubernetes/addons/metallb/addresspool.yaml` stays inside the same LAN as your nodes (e.g., `192.168.0.200-210` if the cluster sits on `192.168.0.0/24`). Addresses outside the local subnet will not route over Wi-Fi/LAN clients.
+- **MetalLB services not reachable:** Confirm the IP range defined in `../clusters/homelab/infrastructure/addons/metallb/addresspool.yaml` stays inside the same LAN as your nodes (e.g., `192.168.0.200-210` if the cluster sits on `192.168.0.0/24`). Addresses outside the local subnet will not route over Wi-Fi/LAN clients.
 - **Cert-manager stuck on challenges:** Make sure the `letsencrypt-cloudflare` `ClusterIssuer` shows `Ready=True` (`kubectl describe clusterissuer letsencrypt-cloudflare`) and that wildcard/host-specific challenges in `kubectl get challenges -A` report `Valid`. If they remain `Pending`, verify the Cloudflare token and DNS propagation.
-- **ExternalDNS not updating records:** Check the ExternalDNS deployment logs (`kubectl logs -n kube-system deploy/external-dns`) and confirm the Cloudflare API token secret matches `infrastructure/kubernetes/addons/external-dns/values.yaml`. Successful syncs appear as `Applied desired changes` entries.
+- **ExternalDNS not updating records:** Check the ExternalDNS deployment logs (`kubectl logs -n external-dns deploy/external-dns`) and confirm the Cloudflare API token secret matches the values in `../clusters/homelab/infrastructure/addons/external-dns/helmrelease.yaml`. Successful syncs appear as `Applied desired changes` entries.
 
 Refer to `docs/adr/004-terraform-kubeadm-bootstrap.md` for the detailed rationale behind automating kubeadm with Terraform provisioners.
+
+Run the following to check for keys checking:
+```
+git status -sb, git ls-files | rg '(tfvars|tfstate|kubeconfig|id_ed25519|key)', and rg -i 'api[_-]?token|password|secret|BEGIN
+  [^-]*PRIVATE KEY' 
+```
