@@ -31,13 +31,13 @@ spec:
               storageClassName: longhorn
               resources:
                 requests:
-                  storage: 5Gi
+                  storage: 1Gi
     grafana:
       persistence:
         enabled: true
         accessModes:
           - ReadWriteOnce
-        size: 10Gi
+        size: 2Gi
         storageClassName: longhorn
       additionalDataSources:
         - access: proxy
@@ -58,7 +58,7 @@ spec:
               storageClassName: longhorn
               resources:
                 requests:
-                  storage: 50Gi
+                  storage: 10Gi
         serviceMonitorSelectorNilUsesHelmValues: false
         podMonitorSelectorNilUsesHelmValues: false
     prometheusOperator:
