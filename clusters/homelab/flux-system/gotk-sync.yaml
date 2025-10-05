@@ -7,7 +7,7 @@ metadata:
 spec:
   interval: 1m
   ref:
-    branch: fluxcd-implementation
+    branch: main
   secretRef:
     name: homelab-git
   url: https://github.com/mppan821/homelab.git
