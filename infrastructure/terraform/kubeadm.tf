@@ -70,7 +70,10 @@ resource "null_resource" "control_plane_install" {
         rm -f \$HOME/.kube/config
         sudo cp -i /etc/kubernetes/admin.conf \$HOME/.kube/config
         sudo chown \$(id -u):\$(id -g) \$HOME/.kube/config
+        sudo chmod 600 \$HOME/.kube/config
         sudo apt-get install curl gpg apt-transport-https --yes
+
+        ## need to install cilium so the flux will work. the management of the cilium is done by flux after this initial install
         curl -fsSL https://packages.buildkite.com/helm-linux/helm-debian/gpgkey | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
         echo \"deb [signed-by=/usr/share/keyrings/helm.gpg] https://packages.buildkite.com/helm-linux/helm-debian/any/ any main\" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
         sudo apt-get update

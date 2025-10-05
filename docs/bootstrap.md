@@ -61,7 +61,7 @@ Adjust the VM definitions in `variables.tf` if you need different IPs, resources
 Run Terraform to provision the VMs and bootstrap Kubernetes:
 
 ```bash
-terraform apply
+terraform -chdir=infrastructure/terraform apply
 ```
 
 Terraform will power on the VMs and wait for SSH readiness (up to ~5 minutes) before running installers. Behind the scenes Terraform will:
@@ -94,29 +94,24 @@ Re-running `terraform apply` is idempotent; bump `kubeadm_install_revision` in `
 ## 4. Bootstrap Flux GitOps
 
 1. **Install the Flux CLI** on your workstation (`brew install fluxcd/tap/flux` on macOS or see the [Flux install docs](https://fluxcd.io/docs/installation/)).
-2. **Create an SSH deploy key** dedicated to Flux (e.g., `ssh-keygen -t ed25519 -f ~/.ssh/flux-system`). Add the public key to the GitHub repo (`Settings → Deploy keys → Add deploy key`, enable write access if Flux should push changes).
-3. Install the Flux CRDs: 
-```bash
-kubectl apply -k 'github.com/fluxcd/flux2/manifests/install?ref=v2.7.0'
-```
-4. **Publish the private key to the cluster:**
+2. **Apply the Flux system manifests** shipped with this repository. This installs the controllers and creates the `flux-system` namespace.
 ```bash
 export KUBECONFIG=$PWD/kubeconfig
-kubectl create ns flux-system
-   flux create secret git homelab-git \
-     --url=https://github.com/mppan821/homelab.git \
-     --namespace=flux-system \
-     --username='GITHUB_EMAIL_ADDRESS' \
-     --password='GITHUB_PAT_TOKEN'
-   ```
-4. Apply the Cert-Manager and Metal LB CRDs as they are not part of helm: 
-```bash
-kubectl apply --server-side -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.crds.yaml
-kubectl apply --server-side -k "github.com/metallb/metallb/config/crd?ref=v0.15.2"
+kubectl apply -f https://github.com/fluxcd/flux2/releases/download/v2.7.0/install.yaml   
+kubectl apply -k ./clusters/homelab/flux-system
 ```
-5. **Apply the Flux system manifests** shipped with this repository: `kubectl apply -k ../../clusters/homelab/flux-system`. This installs the Flux controllers and configures them to reconcile `clusters/homelab`.
-6. **Verify reconciliation** with `flux get sources git` and `flux get kustomizations`. Expect the `homelab` `Kustomization` to report `Ready=True`.
-7. **Seed required secrets** before the add-ons converge: for example, `kubectl create secret generic cloudflare-api-key -n cert-manager --from-literal=apiKey=<Cloudflare token>` for cert-manager DNS challenges and the same secret in `external-dns`.
+3. **Create the Git credentials secret** so Flux can sync this repository (GitHub PAT with `repo` scope works well):
+```bash
+flux create secret git homelab-git \
+  --url=https://github.com/mppan821/homelab.git \
+  --namespace=flux-system \
+  --username='GITHUB_EMAIL_ADDRESS' \
+  --password='GITHUB_PAT_TOKEN'
+```
+4. **Verify reconciliation** with `flux get sources git` and `flux get kustomizations`. Expect the `homelab` meta-kustomization to go `Ready=True`, followed by `infrastructure-crds`, `infrastructure-sources`, `infrastructure-addons`, and finally `apps` as their dependencies complete.
+5. **Seed required application secrets** (for example, `kubectl create secret generic cloudflare-api-key -n cert-manager --from-literal=apiKey=<Cloudflare token>` for cert-manager and the same secret in `external-dns`).
+
+> **Why the CRDs reconcile first?** Cert-manager and MetalLB publish their CustomResourceDefinitions outside their Helm charts. The dedicated `infrastructure-crds` Flux Kustomization installs them before the Helm releases in `infrastructure-addons` render their custom resources, which keeps dry-run validation from failing.
 
 ## 5. Next Steps
 
@@ -124,9 +119,8 @@ kubectl apply --server-side -k "github.com/metallb/metallb/config/crd?ref=v0.15.
 - Review the GitOps definitions in `../clusters/homelab/infrastructure/` (Cilium, cert-manager, ExternalDNS, MetalLB, Longhorn, metrics-server) and adjust chart values as your environment evolves.
 - Once storage reconciles, confirm `kubectl get sc` shows `longhorn` marked as `(default)` and run `kubectl -n longhorn-system get pods` to ensure the data plane is healthy.
 - Optional: Deploy the Flux UI by following `docs/weave-gitops-ui.md` (Weave GitOps), then port-forward or secure an ingress before exposing it.
-- Default credentials live under the HelmRelease (`adminUser.create: true`). Update the `passwordHash` and reconcile Flux to rotate the dashboard password.
-- When enabling the UI, ensure the `weave-gitops-admin` secret (bcrypt password) and `cluster-user-auth` service-account token are seeded as described in the guide so the pod can start.
-- Layer on the observability stack and additional services following the roadmap in `docs/architecture.md` and the ADRs, committing the manifests under `clusters/homelab`.
+- Default UI credentials live in the Weave GitOps HelmRelease (`adminUser.create: true`). Update the `passwordHash` and reconcile Flux to rotate the dashboard password.
+- Layer on the observability stack and additional services following the roadmap in `docs/architecture.md` and the ADRs, committing the manifests under `clusters/homelab` and introducing new Flux Kustomizations as needed so dependencies stay explicit.
 - Commit any environment-specific overrides (without secrets) to keep the bootstrap repeatable.
 - Tune `vm_configs` or `kubeadm_install_revision` to change resources, IPs, or force reconfiguration.
 
@@ -137,7 +131,7 @@ kubectl apply --server-side -k "github.com/metallb/metallb/config/crd?ref=v0.15.
 - **Nodes not joining:** Ensure the workers can reach `https://192.168.0.100:6443` and that `kubeadm token create --print-join-command` returns a valid token.
 - **MetalLB services not reachable:** Confirm the IP range defined in `../clusters/homelab/infrastructure/addons/metallb/addresspool.yaml` stays inside the same LAN as your nodes (e.g., `192.168.0.200-210` if the cluster sits on `192.168.0.0/24`). Addresses outside the local subnet will not route over Wi-Fi/LAN clients.
 - **Cert-manager stuck on challenges:** Make sure the `letsencrypt-cloudflare` `ClusterIssuer` shows `Ready=True` (`kubectl describe clusterissuer letsencrypt-cloudflare`) and that wildcard/host-specific challenges in `kubectl get challenges -A` report `Valid`. If they remain `Pending`, verify the Cloudflare token and DNS propagation.
-- **Flux reports missing CRDs:** Install upstream CRDs before rerunning reconciliation (e.g., cert-manager: `kubectl apply --server-side -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.crds.yaml`, MetalLB: `kubectl apply --server-side -k "github.com/metallb/metallb/config/crd?ref=v0.14.5"`).
+- **Flux reports missing CRDs:** The repository reconciles cert-manager (`v1.18.2`) and MetalLB (`v0.15.2`) CRDs automatically. If reconciliation still fails (for example, due to blocked network access), re-run `kubectl apply --server-side -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.crds.yaml` and `kubectl apply --server-side -k "github.com/metallb/metallb/config/crd?ref=v0.15.2"`, then reconcile Flux again.
 - **HelmRelease fails with Invalid chart reference:** Confirm the chart/version exists in the referenced HelmRepository. If not, update the repo or remove the release (e.g., we removed local-path-provisioner in favor of Longhorn).
 - **ExternalDNS not updating records:** Check the ExternalDNS deployment logs (`kubectl logs -n external-dns deploy/external-dns`) and confirm the Cloudflare API token secret matches the values in `../clusters/homelab/infrastructure/addons/external-dns/helmrelease.yaml`. Successful syncs appear as `Applied desired changes` entries.
 

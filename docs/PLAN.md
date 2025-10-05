@@ -12,9 +12,10 @@ This plan describes the current workflow for bringing the homelab cluster online
 
 ## Stage 1 – Flux Bootstrap
 
-- Install the Flux CLI locally and create the `flux-system` deploy key (see `docs/bootstrap.md`).
-- Apply `clusters/homelab/flux-system` and verify `flux get kustomizations` reports the `homelab` root as `Ready`.
-- Seed required secrets before reconciliation converges (e.g., `cloudflare-api-key` in both `cert-manager` and `external-dns`).
+- Install the Flux CLI locally and apply `clusters/homelab/flux-system` to install the controllers.
+- Create the `homelab-git` secret with a GitHub personal access token (PAT) so Flux can sync this repository.
+- Verify `flux get kustomizations` shows `homelab` in `Ready` state and seed required secrets (e.g., `cloudflare-api-key` in both `cert-manager` and `external-dns`).
+- Flux reconciles cert-manager and MetalLB CRDs from `clusters/homelab/infrastructure/crds/` so those Helm releases always have their APIs available before install.
 
 ## Stage 2 – Platform Add-ons (managed by Flux)
 

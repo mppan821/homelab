@@ -1,21 +1,21 @@
 # Weave GitOps UI (Flux Dashboard)
 
-This guide shows how to add the Weave GitOps UI so you can explore Flux reconciliation status through a web interface. The UI deployment is optional; keep it behind authentication and only expose it within trusted networks.
+This guide shows how to add the optional Weave GitOps UI so you can browse Flux reconciliation status from a web browser. Keep the dashboard behind authentication and expose it only on trusted networks.
 
-## 1. Prepare credentials
+## 1. Pick an admin password
 
-The chart ships with a default admin account (username `admin`). Decide on a password and keep the bcrypt hash handy if you want to rotate it later:
+The chart ships with a local admin account (username `admin`). Generate a bcrypt hash so you can rotate the password later:
 
 ```bash
 htpasswd -nbB admin 'change-me' | cut -d':' -f2
 # copy the hash output (starts with $2y$...)
 ```
 
-> Tip: updating the `passwordHash` in the HelmRelease and reconciling Flux rotates the dashboard password.
+You can replace `'change-me'` with any strong password; update the HelmRelease with the matching hash whenever you want to rotate credentials.
 
 ## 2. Add the HelmRepository to Flux
 
-Create `clusters/homelab/infrastructure/sources/helm/weave-gitops-helmrepository.yaml` with:
+Create `clusters/homelab/infrastructure/sources/helm/weave-gitops-helmrepository.yaml`:
 
 ```yaml
 apiVersion: source.toolkit.fluxcd.io/v1
@@ -29,11 +29,11 @@ spec:
   url: oci://ghcr.io/weaveworks/charts
 ```
 
-Update `clusters/homelab/infrastructure/sources/helm/kustomization.yaml` to include the new repository.
+Update `clusters/homelab/infrastructure/sources/helm/kustomization.yaml` so it lists `weave-gitops-helmrepository.yaml`.
 
 ## 3. Add the HelmRelease
 
-Create a new directory `clusters/homelab/infrastructure/addons/weave-gitops/` containing:
+Create `clusters/homelab/infrastructure/addons/weave-gitops/` with:
 
 `namespace.yaml`
 ```yaml
@@ -43,43 +43,6 @@ metadata:
   labels:
     toolkit.fluxcd.io/tenant: platform
   name: weave-gitops
-```
-
-`serviceaccount.yaml`
-```yaml
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: weave-gitops-user
-  namespace: weave-gitops
-```
-
-`clusterrolebinding.yaml`
-```yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: weave-gitops-user
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: cluster-admin
-subjects:
-  - kind: ServiceAccount
-    name: weave-gitops-user
-    namespace: weave-gitops
-```
-
-`clusteruser-secret.yaml`
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: cluster-user-auth
-  namespace: weave-gitops
-  annotations:
-    kubernetes.io/service-account.name: weave-gitops-user
-type: kubernetes.io/service-account-token
 ```
 
 `helmrelease.yaml`
@@ -108,19 +71,16 @@ spec:
     remediation:
       retries: 3
   values:
+    WEAVE_GITOPS_FEATURE_TELEMETRY: "true"
     adminUser:
-      create: false
-      existingSecret: weave-gitops-admin
-    clusterUser:
-      serviceAccount:
-        create: false
-        name: weave-gitops-user
-      authSecret:
-        create: false
-        name: cluster-user-auth
+      create: true
+      username: admin
+      passwordHash: "$2a$10$t/wk8MIWCYp.HBRE68T8FO5UVxTqtZM55BD4XfntO74WuMQAiqJYm"
     service:
       type: ClusterIP
 ```
+
+Replace `passwordHash` with the value you generated above if you do not want to use the default `change-me` password.
 
 `kustomization.yaml`
 ```yaml
@@ -128,13 +88,10 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - namespace.yaml
-  - serviceaccount.yaml
-  - clusterrolebinding.yaml
-  - clusteruser-secret.yaml
   - helmrelease.yaml
 ```
 
-Add the directory to `clusters/homelab/infrastructure/addons/kustomization.yaml`.
+Also add `weave-gitops` to `clusters/homelab/infrastructure/addons/kustomization.yaml`.
 
 ## 4. Reconcile Flux
 
@@ -144,16 +101,16 @@ flux reconcile kustomization homelab
 flux get helmreleases -n flux-system weave-gitops
 ```
 
-Once the release is ready, port-forward locally:
+Once the HelmRelease reports `Ready`, port-forward locally:
 
 ```bash
 kubectl port-forward -n weave-gitops svc/weave-gitops 9001:9001
 ```
 
-Then browse to `http://localhost:9001` and sign in with the credentials you created earlier. (You can also publish the UI through an Ingress, but limit access with network policy or authentication.)
+Visit <http://localhost:9001> and log in with the admin password you selected.
 
 ## 5. Housekeeping
 
-- Rotate the admin secret periodically and keep it outside version control.
-- If you expose the UI through ingress, secure it with TLS and an identity-aware proxy.
-- Watch Flux events with `flux get kustomizations` and `flux logs --level=info` for deeper troubleshooting alongside the UI.
+- Rotate the UI password by updating `passwordHash` in the HelmRelease and reconciling Flux.
+- Lock down ingress or require an identity-aware proxy before exposing the dashboard publicly.
+- Watch Flux events with `flux get kustomizations` and `flux logs --level=info` when debugging.
