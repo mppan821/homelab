@@ -4,7 +4,7 @@ metadata:
   name: master-node
   namespace: longhorn-system
 spec:
-  allowScheduling: true
+  allowScheduling: false
   disks:
     ssd-disk:
       path: /var/lib/longhorn
