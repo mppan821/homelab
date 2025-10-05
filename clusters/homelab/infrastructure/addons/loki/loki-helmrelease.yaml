@@ -46,14 +46,18 @@ spec:
               period: 24h
       storage_config:
         filesystem:
-          chunks_directory: /var/loki/chunks
-          rules_directory: /var/loki/rules
+          directory: /var/loki/tsdb-object-store
         tsdb_shipper:
+          shared_store: filesystem
           active_index_directory: /var/loki/tsdb-index
           cache_location: /var/loki/tsdb-cache
       compactor:
         working_directory: /var/loki/compactor
-        shared_store: filesystem
+      rulerConfig:
+        storage:
+          type: local
+          local:
+            directory: /var/loki/rules
       persistence:
         enabled: true
         storageClassName: longhorn

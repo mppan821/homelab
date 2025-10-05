@@ -137,6 +137,12 @@ kubectl port-forward -n weave-gitops svc/weave-gitops 9001:9001
 ```
 Visit <http://localhost:9001> and log in with the admin password you selected. Default is `admin/changeme` if you didn't change the password.
 
+Access Longhorn:
+```bash
+kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80
+```
+Visit <http://localhost:8080>.
+
 Refer to `docs/adr/004-terraform-kubeadm-bootstrap.md` for the detailed rationale behind automating kubeadm with Terraform provisioners.
 
 Run the following to check for keys checking:
