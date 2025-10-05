@@ -9,6 +9,8 @@ This repository builds and operates a three-node kubeadm cluster on Proxmox, wit
 - **Longhorn** – Distributed block storage for persistent volumes ([repo](https://github.com/longhorn/longhorn)).
 - **MetalLB** – L2 load balancer for bare-metal services ([repo](https://github.com/metallb/metallb)).
 - **metrics-server** – Cluster metrics API for HPA/VPA ([repo](https://github.com/kubernetes-sigs/metrics-server)).
+- **kube-prometheus-stack** – Prometheus Operator with Alertmanager and Grafana dashboards ([repo](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack)).
+- **Loki Stack** – Centralized logs via Grafana Loki and Promtail ([repo](https://github.com/grafana/helm-charts/tree/main/charts/loki-stack)).
 - **Weave GitOps UI** – Optional Flux dashboard served via Helm ([repo](https://github.com/weaveworks/weave-gitops)).
 
 Repository layout highlights:

@@ -1,0 +1,69 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kube-prometheus-stack
+  namespace: flux-system
+spec:
+  chart:
+    spec:
+      chart: kube-prometheus-stack
+      sourceRef:
+        kind: HelmRepository
+        name: prometheus-community
+        namespace: flux-system
+      version: 77.13.0
+  install:
+    remediation:
+      retries: -1
+  interval: 30m
+  releaseName: kube-prometheus-stack
+  targetNamespace: monitoring
+  timeout: 15m
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    alertmanager:
+      alertmanagerSpec:
+        storage:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: longhorn
+              resources:
+                requests:
+                  storage: 5Gi
+    grafana:
+      persistence:
+        enabled: true
+        accessModes:
+          - ReadWriteOnce
+        size: 10Gi
+        storageClassName: longhorn
+      additionalDataSources:
+        - access: proxy
+          editable: true
+          isDefault: false
+          jsonData:
+            maxLines: 1000
+          name: Loki
+          type: loki
+          uid: loki
+          url: http://loki.monitoring.svc.cluster.local:3100
+    prometheus:
+      prometheusSpec:
+        retention: 15d
+        storageSpec:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: longhorn
+              resources:
+                requests:
+                  storage: 50Gi
+        serviceMonitorSelectorNilUsesHelmValues: false
+        podMonitorSelectorNilUsesHelmValues: false
+    prometheusOperator:
+      admissionWebhooks:
+        certManager:
+          enabled: true
+        patch:
+          enabled: true
