@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: longhorn-node-labeler
+  namespace: longhorn-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: longhorn-node-labeler
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: longhorn-node-labeler
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: longhorn-node-labeler
+subjects:
+  - kind: ServiceAccount
+    name: longhorn-node-labeler
+    namespace: longhorn-system
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: longhorn-node-labeler
+  namespace: longhorn-system
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: longhorn-node-labeler
+    spec:
+      serviceAccountName: longhorn-node-labeler
+      restartPolicy: OnFailure
+      containers:
+        - name: labeler
+          image: bitnami/kubectl:1.34.1
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -euo pipefail
+              until kubectl get nodes master-node >/dev/null 2>&1; do
+                echo "Waiting for API availability..."
+                sleep 5
+              done
+              kubectl -n longhorn-system rollout status deployment/longhorn-manager --timeout=300s
+              kubectl label nodes master-node node.longhorn.io/disable-scheduling=true --overwrite
+              for node in worker-node-1 worker-node-2; do
+                kubectl label nodes "$node" node.longhorn.io/create-default-disk=true --overwrite
+                kubectl label nodes "$node" node.longhorn.io/default-disk-configured=true --overwrite
+              done
+              echo "Longhorn node labels applied."

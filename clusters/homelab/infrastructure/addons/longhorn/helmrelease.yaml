@@ -29,4 +29,23 @@ spec:
     defaultSettings:
       defaultDataPath: /var/lib/homelab-storage/longhorn
       defaultReplicaCount: "1"
-      createDefaultDiskLabeledNodes: "false"
+      createDefaultDiskLabeledNodes: "true"
+      defaultDiskConfig: |
+        [
+          {
+            "name": "ssd-disk",
+            "path": "/var/lib/longhorn",
+            "allowScheduling": false,
+            "evictionRequested": false,
+            "storageReserved": 0,
+            "tags": ["ssd"]
+          },
+          {
+            "name": "hdd-disk",
+            "path": "/var/lib/homelab-storage/longhorn",
+            "allowScheduling": true,
+            "evictionRequested": false,
+            "storageReserved": 0,
+            "tags": ["hdd"]
+          }
+        ]
