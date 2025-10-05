@@ -31,6 +31,13 @@ spec:
 
 Update `clusters/homelab/infrastructure/sources/helm/kustomization.yaml` so it lists `weave-gitops-helmrepository.yaml`.
 
+> **Flux OCI support** – the Flux source-controller needs the `OCIRepositories` feature gate enabled to pull charts from an OCI registry. The overlay baked into `clusters/homelab/flux-system/kustomization.yaml` patches the controller with that flag; re-apply the Flux kustomization after pulling these changes:
+> ```bash
+> kubectl apply -k clusters/homelab/flux-system
+> flux reconcile kustomization flux-system
+> ```
+> If you skip this step, Flux reports `HelmRepository/weave-gitops NotReady: failed to pull index oci://...` until the feature gate is present.
+
 ## 3. Add the HelmRelease
 
 Create `clusters/homelab/infrastructure/addons/weave-gitops/` with:
@@ -98,6 +105,7 @@ Also add `weave-gitops` to `clusters/homelab/infrastructure/addons/kustomization
 ```bash
 kubectl apply -k clusters/homelab/flux-system
 flux reconcile kustomization homelab
+flux get sources helm -n flux-system weave-gitops
 flux get helmreleases -n flux-system weave-gitops
 ```
 

@@ -7,3 +7,14 @@ resources:
   - infrastructure-sources.yaml
   - infrastructure-addons.yaml
   - apps.yaml
+patches:
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: source-controller
+      namespace: flux-system
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/args/-
+        value: --feature-gates=OCIRepositories=true
