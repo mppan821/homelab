@@ -143,6 +143,16 @@ kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80
 ```
 Visit <http://localhost:8080>.
 
+Access Grafana:
+```bash
+kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3001:80
+
+# Get username and password
+kubectl get secret kube-prometheus-stack-grafana -n monitoring -o jsonpath='{.data.admin-user}' | base64 --decode; echo                 
+kubectl get secret kube-prometheus-stack-grafana -n monitoring -o jsonpath='{.data.admin-password}' | base64 --decode; echo
+```
+Visit <http://localhost:3001>.
+
 Refer to `docs/adr/004-terraform-kubeadm-bootstrap.md` for the detailed rationale behind automating kubeadm with Terraform provisioners.
 
 Run the following to check for keys checking:
