@@ -4,3 +4,4 @@ resources:
   - crds
   - sources/helm
   - addons
+  - storage

@@ -23,10 +23,12 @@ variable "vm_configs" {
     ciuser      = string
     cipassword  = string
     cores       = number
-    bridge      = string
-    network_tag = number
-    disk_size   = string
-    storage     = string
+    bridge            = string
+    network_tag       = number
+    disk_size         = string
+    storage           = string
+    data_disk_size    = string
+    data_disk_storage = string
   }))
   default = {
     "master-node" = {
@@ -43,13 +45,15 @@ variable "vm_configs" {
       cores       = 2
       bridge      = "vmbr0"
       network_tag = 0
-      disk_size   = "50G"
+      disk_size   = "40G"
       storage     = "local"
+      data_disk_size    = "1000G"
+      data_disk_storage = "hdd1-storage"
     }
     "worker-node-1" = {
       vm_id       = 1002
       name        = "worker-node-1"
-      memory      = 8192
+      memory      = 16384
       vm_state    = "running"
       onboot      = true
       startup     = "order=2"
@@ -60,13 +64,15 @@ variable "vm_configs" {
       cores       = 2
       bridge      = "vmbr0"
       network_tag = 0
-      disk_size   = "100G"
+      disk_size   = "90G"
       storage     = "local"
+      data_disk_size    = "2000G"
+      data_disk_storage = "hdd1-storage"
     }
     "worker-node-2" = {
       vm_id       = 1003
       name        = "worker-node-2"
-      memory      = 8192
+      memory      = 16384
       vm_state    = "running"
       onboot      = true
       startup     = "order=2"
@@ -77,8 +83,10 @@ variable "vm_configs" {
       cores       = 2
       bridge      = "vmbr0"
       network_tag = 0
-      disk_size   = "100G"
+      disk_size   = "90G"
       storage     = "local"
+      data_disk_size    = "2000G"
+      data_disk_storage = "hdd1-storage"
     }
   }
 }

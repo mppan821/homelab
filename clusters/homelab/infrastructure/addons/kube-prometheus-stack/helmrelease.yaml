@@ -28,7 +28,7 @@ spec:
         storage:
           volumeClaimTemplate:
             spec:
-              storageClassName: longhorn
+              storageClassName: alertmanager-local
               resources:
                 requests:
                   storage: 1Gi
@@ -52,7 +52,7 @@ spec:
         storageSpec:
           volumeClaimTemplate:
             spec:
-              storageClassName: longhorn
+              storageClassName: prometheus-local
               resources:
                 requests:
                   storage: 10Gi

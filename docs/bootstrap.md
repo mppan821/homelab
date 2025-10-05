@@ -68,12 +68,12 @@ terraform -chdir=infrastructure/terraform apply
 1. **Check VM status in Proxmox** – confirm all three VMs are running and reachable.
 2. **Validate cluster health:**
    ```bash
-   ssh -i ../../id_ed25519 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ubuntu@192.168.0.100 "kubectl get nodes -o wide"
+   ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ubuntu@192.168.0.100 "kubectl get nodes -o wide"
    ```
    Expect the control node and both workers to report `Ready` once kubeadm has joined the agents.
 3. **Retrieve kubeconfig:**
    ```bash
-   ssh -i ../../id_ed25519 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ubuntu@192.168.0.100 "sudo cat /etc/kubernetes/admin.conf" > kubeconfig
+   ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ubuntu@192.168.0.100 "sudo cat /etc/kubernetes/admin.conf" > kubeconfig
    kubectl get nodes -o wide
    ```
    Optionally copy `kubeconfig` to `~/.kube/config` if you want kubectl to pick it up by default.

@@ -90,10 +90,7 @@ spec:
           enabled: false
       persistence:
         enabled: true
-        storageClassName: longhorn
-        accessModes:
-          - ReadWriteOnce
-        size: 5Gi
+        existingClaim: loki-logs
       serviceMonitor:
         enabled: true
       podAnnotations:

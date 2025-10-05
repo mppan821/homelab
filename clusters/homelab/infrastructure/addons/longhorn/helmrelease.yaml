@@ -27,6 +27,6 @@ spec:
       defaultClassReplicaCount: 1
       reclaimPolicy: Delete
     defaultSettings:
-      defaultDataPath: /var/lib/longhorn
+      defaultDataPath: /var/lib/homelab-storage/longhorn
       defaultReplicaCount: 1
       createDefaultDiskLabeledNodes: false
