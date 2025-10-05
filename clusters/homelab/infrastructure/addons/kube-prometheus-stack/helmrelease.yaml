@@ -35,10 +35,7 @@ spec:
     grafana:
       persistence:
         enabled: true
-        accessModes:
-          - ReadWriteOnce
-        size: 2Gi
-        storageClassName: longhorn
+        existingClaim: kube-prometheus-stack-grafana
       additionalDataSources:
         - access: proxy
           editable: true
