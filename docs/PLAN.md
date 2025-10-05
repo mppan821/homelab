@@ -1,285 +1,58 @@
- 🛠️ Homelab Kubernetes Setup (kubeadm)
+# Homelab GitOps Execution Plan
 
-## 📋 Prerequisites
-
-* **Proxmox VMs**
-  * 1 control plane VM (Ubuntu 24.04+, 4 vCPU, 8 GB RAM, 50 GB disk).
-  * 2 worker VMs (Ubuntu 24.04+, 4 vCPU, 8 GB RAM, 100 GB disk).
-* **SSH access** to all nodes with sudo privileges.
-* **Domain (optional)** for ingress and TLS (e.g., `*.lab.example.com`).
+This plan describes the current workflow for bringing the homelab cluster online and keeping core services in sync. The legacy manual helm-based steps have been retired; Terraform and Flux now own the end-to-end automation. Use this document as a progress checklist and to identify future enhancements that still need manifests.
 
 ---
 
-## 1. Prepare Each Node
+## Stage 0 – Infrastructure Provisioning
 
-Run on every node (control plane + workers):
+- Follow `docs/bootstrap.md` to prepare Proxmox and apply `infrastructure/terraform/`.
+- Fetch the generated kubeconfig and export `KUBECONFIG=$PWD/kubeconfig`.
+- Confirm the control plane and workers are `Ready` with `kubectl get nodes -o wide`.
 
-```bash
-sudo swapoff -a
-sudo sed -i '/ swap / s/^/#/' /etc/fstab
+## Stage 1 – Flux Bootstrap
 
-sudo apt-get update
-sudo apt-get install -y apt-transport-https ca-certificates curl gnupg2 software-properties-common
+- Install the Flux CLI locally and apply `clusters/homelab/flux-system` to install the controllers.
+- Create the `homelab-git` secret with a GitHub personal access token (PAT) so Flux can sync this repository.
+- Verify `flux get kustomizations` shows `homelab` in `Ready` state and seed required secrets (e.g., `cloudflare-api-key` in both `cert-manager` and `external-dns`).
+- Flux reconciles cert-manager and MetalLB CRDs from `clusters/homelab/infrastructure/crds/` so those Helm releases always have their APIs available before install.
 
-sudo mkdir -p /etc/apt/keyrings
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.34/deb/Release.key \
-  | sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+## Stage 2 – Platform Add-ons (managed by Flux)
 
-echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.34/deb/ /" \
-  | sudo tee /etc/apt/sources.list.d/kubernetes.list
+Flux continuously reconciles the following Helm releases under `clusters/homelab/infrastructure/`:
 
-sudo apt-get update
-sudo apt-get install -y kubelet kubeadm kubectl containerd docker.io
-sudo apt-mark hold kubelet kubeadm kubectl
+- **Networking:** `cilium`, `metallb` (with address pool and L2 advertisement).
+- **Security & Certificates:** `cert-manager`, `external-dns` (Cloudflare integration).
+- **Storage:** `longhorn` (default storage class).
+- **Metrics:** `metrics-server`.
+- **Optional UI:** Weave GitOps dashboard (see `docs/weave-gitops-ui.md`).
 
-sudo mkdir -p /etc/containerd
-sudo sh -c 'containerd config default > /etc/containerd/config.toml'
-sudo sed -i 's/ SystemdCgroup = false/ SystemdCgroup = true/' /etc/containerd/config.toml
-sudo systemctl restart containerd
-sudo systemctl enable kubelet --now
-```
+After Flux reports the add-ons as `Ready`:
 
-Set the hostname to match the intended node name (optional but recommended):
+1. Check storage classes (`kubectl get sc`) and ensure `longhorn` is default.
+2. Inspect controller pods for health, e.g. `kubectl -n longhorn-system get pods`, `kubectl -n metallb-system get pods`.
+3. Confirm certificates issue successfully through `cert-manager` (`kubectl get certificaterequests -A`).
 
-```bash
-sudo hostnamectl set-hostname <desired-hostname>
-```
+## Stage 3 – Applications
 
----
+- Application bases live under `apps/`; Flux Kustomizations for each environment live in `clusters/homelab/apps/`.
+- Adjust hostnames or values inside the overlays (e.g., `apps/sample-nginx/overlays/staging/domain.env`), commit, and wait for the corresponding Flux `Kustomization` (`sample-nginx-staging` or `sample-nginx-production`) to report `Ready`.
+- Extend the pattern to additional workloads by creating new directories under `clusters/homelab/apps/<env>/` that point back to the appropriate overlay path.
 
-## 2. Initialize the Control Plane
+## Operational Checklist
 
-Run on the control plane (`master-node`):
+- [ ] `terraform apply` succeeds with no drift.
+- [ ] `flux get kustomizations` shows `homelab`, all infrastructure add-ons, and application Kustomizations in `Ready` state.
+- [ ] `kubectl get sc` lists `longhorn (default)`.
+- [ ] `kubectl get ingress -A` reflects expected DNS entries once ExternalDNS syncs.
+- [ ] Sample nginx staging and production environments are reachable (`kubectl get svc -n staging sample-nginx`).
 
-```bash
-sudo kubeadm config images pull
-sudo kubeadm init --pod-network-cidr=10.0.0.0/16
-```
+## Backlog / Future Enhancements
 
-If init succeeds, configure kubectl for the `ubuntu` user:
+- Observability stack (Prometheus, Grafana, Loki, Jaeger) managed via Flux.
+- Security hardening (Vault + External Secrets Operator, Authentik, Gatekeeper, Falco, Trivy).
+- Backup and DR automation (Velero targeting S3/MinIO).
+- GitOps-driven pipeline for primary homelab applications (Immich, Joplin, Karakeep, etc.).
+- Automated testing or policy checks for Flux manifests (conftest, kubeconform, or GitHub Actions).
 
-```bash
-mkdir -p $HOME/.kube
-sudo cp /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
-```
-
-Save the worker join command for later:
-
-```bash
-kubeadm token create --print-join-command
-```
-
-Install Helm if you don’t already have it on the control plane:
-
-```bash
-curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-```
-
----
-
-## 3. Install Cilium (CNI)
-
-Review `infrastructure/kubernetes/addons/cilium/values.yaml` and update `k8sServiceHost` if the control-plane IP differs.
-
-```bash
-helm repo add cilium https://helm.cilium.io/
-helm repo update
-helm upgrade --install cilium cilium/cilium \
-  --namespace kube-system \
-  --version 1.18.2 \
-  --values infrastructure/kubernetes/addons/cilium/values.yaml
-```
-
-Validate the deployment (install the [Cilium CLI](https://docs.cilium.io/en/stable/installation/k8s-install-helm/#validate-the-installation) if desired):
-
-```bash
-kubectl -n kube-system get pods -l k8s-app=cilium
-```
-
----
-
-## 4. Join Worker Nodes
-
-Run the `kubeadm join ...` command printed earlier on each worker. If you lost it, regenerate one from the control plane:
-
-```bash
-kubeadm token create --print-join-command
-```
-
-Execute the command with sudo on every worker. When all nodes are connected:
-
-```bash
-kubectl get nodes -o wide
-```
-
-You should see the control plane and both workers in the `Ready` state.
-
----
-
-## 5. Core Metrics
-
-```bash
-helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
-helm repo update
-helm install metrics-server metrics-server/metrics-server \
-  --namespace kube-system \
-  --set args={"--kubelet-insecure-tls"} \
-  --set apiService.create=true
-
-## state metrics is needed for Elastic Cloud
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
-helm install kube-state-metrics prometheus-community/kube-state-metrics \
-  --namespace kube-system \
-  --set fullnameOverride=kube-state-metrics
-```
-
----
-
-## 6. Namespaces for Environments
-
-```bash
-kubectl create namespace staging
-kubectl create namespace production
-```
-
----
-
-## 7. Ingress + Cert-Manager
-
-```bash
-kubectl create secret generic cloudflare-api-key \
-  --from-literal=apiKey='token-here' \
-  --namespace kube-system
-
-helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-helm repo add jetstack https://charts.jetstack.io
-helm repo update
-
-helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx -n kube-system
-helm upgrade --install cert-manager jetstack/cert-manager \
-  --namespace cert-manager \
-  --create-namespace \
-  --set installCRDs=true
-```
-
-Create a Cloudflare API token with DNS edit permissions ([reference](https://github.com/kubernetes-sigs/external-dns/blob/master/docs/tutorials/cloudflare.md)) and store it as a Kubernetes secret:
-
-```bash
-kubectl create secret generic cloudflare-api-key \
-  --from-literal=apiKey='token-here' \
-  --namespace kube-system
-```
-
-Update the email address in `infrastructure/kubernetes/addons/cert-manager/clusterissuer-cloudflare.yaml`, then apply the issuer:
-
-```bash
-kubectl apply -f infrastructure/kubernetes/addons/cert-manager/clusterissuer-cloudflare.yaml
-```
-
-Review `infrastructure/kubernetes/addons/external-dns/values.yaml` (rename the secret if you deviated above) and deploy ExternalDNS:
-
-```bash
-helm repo add external-dns https://kubernetes-sigs.github.io/external-dns/
-helm repo update
-helm upgrade --install external-dns external-dns/external-dns \
-  --namespace kube-system \
-  --values infrastructure/kubernetes/addons/external-dns/values.yaml
-```
-
-Test with a sample app (`whoami`) in both namespaces.
-
----
-
-## 8. Metal LB
-
-```bash
-helm repo add metallb https://metallb.github.io/metallb
-helm repo update
-kubectl create namespace metallb-system
-helm upgrade --install metallb metallb/metallb -n metallb-system
-sleep 10;
-kubectl apply -f infrastructure/kubernetes/addons/metallb/addresspool.yaml
-kubectl apply -f infrastructure/kubernetes/addons/metallb/l2advertisement.yaml
-```
-
-## 9. Storage (Longhorn)
-
-```bash
-helm repo add longhorn https://charts.longhorn.io
-helm repo update
-kubectl create namespace longhorn-system
-helm upgrade --install longhorn longhorn/longhorn -n longhorn-system
-```
-
-Access the Longhorn UI via NodePort or Ingress.
-
----
-
-## 10. Observability
-
-```bash
-helm upgrade --install prometheus prometheus-community/kube-prometheus-stack -n monitoring --create-namespace
-helm upgrade --install loki grafana/loki-stack -n monitoring
-```
-
-Default Grafana credentials:
-
-* User: `admin`
-* Pass: `prom-operator`
-
----
-
-## 10. Secrets Management
-
-```bash
-helm repo add sealed-secrets https://bitnami-labs.github.io/sealed-secrets
-helm upgrade --install sealed-secrets sealed-secrets/sealed-secrets -n kube-system
-```
-
-Encrypt secrets before committing to Git.
-
----
-
-## 11. Backup & DR (Velero)
-
-```bash
-velero install \
-  --provider aws \
-  --plugins velero/velero-plugin-for-aws:v1.7.0 \
-  --bucket homelab-backups \
-  --secret-file ./credentials-velero \
-  --backup-location-config region=minio,s3ForcePathStyle="true",s3Url=http://<minio-ip>:9000 \
-  --use-volume-snapshots=false \
-  --namespace velero --create-namespace
-```
-
----
-
-## ✅ Next Step
-
-* Deploy apps under `apps/` (Immich, Joplin, Karakeep, etc.).
-* Create separate manifests/Helm values for `staging` and `production`.
-* Scale staging apps down when not in use:
-
-  ```bash
-  kubectl -n staging scale deploy immich --replicas=0
-  ```
-
----
-
-💡 With kubeadm in place, your lab mirrors a production-style Kubernetes environment:
-
-* kubeadm control plane + containerd
-* Cilium (networking)
-* Longhorn (storage)
-* Prometheus/Grafana/Loki (observability)
-* Sealed Secrets (secrets)
-* Velero (backups)
-* GitOps ready (FluxCD/Argo CD as future additions)
-* Staging/production separation via namespaces
-
----
-
-👉 Need bootstrap automation or GitOps manifests? Flag it and we’ll add the next layer.
+> **Tip:** Keep secrets out of the repository. Use `flux create secret ...` or an external secrets operator once it lands in the GitOps tree.

@@ -1,70 +1,39 @@
-# Homelab
+# Homelab Kubernetes Cluster
 
-This repository codifies my homelab, built around a kubeadm-managed Kubernetes cluster that runs on Proxmox virtual machines. Terraform provisions the VMs, configures cloud-init, and bootstraps the control plane so the cluster is reproducible from this repo.
+This repository builds and operates a three-node kubeadm cluster on Proxmox, with Flux CD keeping the platform state in sync from Git (`clusters/homelab`). Terraform provisions the virtual machines and seeds kubeadm; Flux takes over to install the core add-ons and any workloads committed to the repo.
 
-## Current Topology
+## Platform Add-ons (Flux-managed)
+- **Cilium** – CNI with eBPF data plane and network policies ([repo](https://github.com/cilium/cilium)).
+- **cert-manager** – Automated TLS certificates from ACME/Let’s Encrypt ([repo](https://github.com/cert-manager/cert-manager)).
+- **ExternalDNS** – Publishes Kubernetes records to Cloudflare DNS ([repo](https://github.com/kubernetes-sigs/external-dns)).
+- **Longhorn** – Distributed block storage for persistent volumes ([repo](https://github.com/longhorn/longhorn)).
+- **MetalLB** – L2 load balancer for bare-metal services ([repo](https://github.com/metallb/metallb)).
+- **metrics-server** – Cluster metrics API for HPA/VPA ([repo](https://github.com/kubernetes-sigs/metrics-server)).
+- **Weave GitOps UI** – Optional Flux dashboard served via Helm ([repo](https://github.com/weaveworks/weave-gitops)).
 
-- **Hypervisor:** Proxmox VE host on the home network (`192.168.0.250`).
-- **Kubernetes:** One kubeadm control plane (`192.168.0.100`) and two workers (`192.168.0.101-102`) created via Terraform.
-- **Networking:** All VMs attach to `vmbr0` on the main LAN; DNS and routing are provided by the home router (`192.168.0.1`).
-- **Automation:** Terraform `null_resource` provisioners install containerd, the latest Kubernetes 1.34 kubeadm/kubelet/kubectl toolchain, initialize the control plane, and automatically join the worker nodes once they are reachable.
-- **GitOps & Apps (roadmap):** FluxCD, observability stack, and application manifests live under `clusters/` and will be expanded as the lab matures.
+Repository layout highlights:
+- `infrastructure/terraform/` – Proxmox VM definitions and kubeadm bootstrap.
+- `clusters/homelab/` – Flux GitOps tree (CRDs, add-ons, apps).
+- `docs/` – Architecture notes and install guides.
 
-## Prerequisites & Quick Start
+## Requirements
+- **Proxmox VE host** with API access (Terraform clones an Ubuntu 24.04 cloud-init template named `ubuntu-noble`).
+- **Three VMs on Proxmox** (defaults in `infrastructure/terraform/variables.tf`):
+  - Control plane: 2 vCPU, 8 GB RAM, 50 GB disk, static IP `192.168.0.100`.
+  - Worker 1: 2 vCPU, 8 GB RAM, 100 GB disk, static IP `192.168.0.101`.
+  - Worker 2: 2 vCPU, 8 GB RAM, 100 GB disk, static IP `192.168.0.102`.
+- **Terraform CLI** on your workstation.
+- **SSH key pair** accessible to Terraform (default `id_ed25519` in the repo root).
+- **Cloudflare account + API token** for DNS and ACME challenges (used by ExternalDNS and cert-manager).
+- **GitHub PAT** (or equivalent credentials) for Flux to pull this repository.
 
-- **Proxmox VE 9** up and running; follow `docs/bootstrap.md` to create the reusable `ubuntu-noble` cloud-init template (import disk, attach cloud-init, convert to template).
-- **SSH key in repo root**: run `ssh-keygen -t ed25519 -f id_ed25519` from the repository root so Terraform can use `id_ed25519`/`id_ed25519.pub`.
-- **Proxmox API token** with QEMU VM privileges on the Datacenter (clone, rename, read, start/stop). Add the token values to `infrastructure/terraform/terraform.tfvars`.
+Additional tools that make life easier: Flux CLI, kubectl, and access to a workstation with `kubectl` and `helm` installed.
 
-Once prerequisites are in place:
+## Bootstrapping
+Follow `docs/bootstrap.md` for the end-to-end workflow:
+1. Prepare the Proxmox cloud-init template and Terraform variables.
+2. Run Terraform to create the VMs and initialize Kubernetes.
+3. Retrieve the kubeconfig and apply the Flux system manifests.
+4. Create the Git and Cloudflare secrets so Flux can reconcile the add-ons.
 
-1. `terraform -chdir=infrastructure/terraform apply` to clone the template VMs and install Kubernetes with kubeadm.
-2. Copy the kubeconfig down (`scp -i id_ed25519 ubuntu@192.168.0.100:/etc/kubernetes/admin.conf kubeconfig`), replace the server IP if needed, run `chmod 600 kubeconfig`, and export `KUBECONFIG=$PWD/kubeconfig`.
-3. Verify access with `kubectl get pods -A` or `kubectl get nodes -o wide`.
-4. Update `apps/sample-nginx/overlays/staging/domain.env` with a hostname you control, then `kubectl apply -k apps/sample-nginx/overlays/staging/`. Reach it via `http://<node-ip>:30080` immediately or wait for DNS + TLS to validate through the Ingress. (A production overlay lives beside it for multi-namespace smoke testing.)
-
-See `docs/bootstrap.md` for the full walkthrough and troubleshooting tips.
-
-```mermaid
-graph TD
-    subgraph "Proxmox Host"
-        Proxmox["Proxmox VE"]
-        VMControl["master-node\n192.168.0.100"]
-        VMWorker1["worker-node-1\n192.168.0.101"]
-        VMWorker2["worker-node-2\n192.168.0.102"]
-        Proxmox --> VMControl
-        Proxmox --> VMWorker1
-        Proxmox --> VMWorker2
-    end
-
-    subgraph "Terraform IaC"
-        TF["infrastructure/terraform"]
-        TF -->|provisions| Proxmox
-        TF -->|runs kubeadm init| VMControl
-        TF -->|runs kubeadm join| VMWorker1
-        TF -->|runs kubeadm join| VMWorker2
-    end
-
-    subgraph "Kubernetes Cluster"
-        Flux["FluxCD (planned)"]
-        Monitoring["Observability stack (planned)"]
-        Apps["Homelab apps (planned)"]
-        VMControl --> Flux
-        VMControl --> Monitoring
-        VMControl --> Apps
-        VMWorker1 --> Flux
-        VMWorker2 --> Apps
-    end
-
-    GitHub["GitHub Repo"] --> TF
-```
-
-## Key Directories
-
-- `infrastructure/terraform/` – Proxmox VM and kubeadm automation.
-- `infrastructure/kubernetes/` – Post-bootstrap add-ons (Helm values, manifests) grouped by component.
-- `clusters/` – Flux GitOps tree for future workloads.
-- `docs/` – Architecture notes, bootstrap instructions, and ADRs.
-- `apps/` – Simple manifests for kubectl-driven tests (e.g., sample nginx).
-
-See `docs/architecture.md` for the full architecture narrative and `docs/bootstrap.md` for reproducible bootstrap steps.
+Once Flux reports all Kustomizations `Ready`, any changes under `clusters/homelab` will roll out automatically to the cluster.

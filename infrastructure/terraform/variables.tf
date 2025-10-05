@@ -88,21 +88,6 @@ variable "ssh_private_key_path" {
   default = "~/.ssh/id_ed25519"
 }
 
-variable "k3s_server_flags" {
-  type    = string
-  default = "server --disable traefik"
-}
-
-variable "k3s_agent_flags" {
-  type    = string
-  default = ""
-}
-
-variable "k3s_install_revision" {
-  type    = string
-  default = "v1"
-}
-
 
 variable "ssh_public_key" {
   type    = string

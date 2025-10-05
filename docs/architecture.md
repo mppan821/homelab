@@ -33,9 +33,9 @@ All infrastructure under Proxmox is defined in `infrastructure/terraform/`.
 ## 3. Kubernetes Stack
 
 - **Distribution:** kubeadm on Ubuntu with containerd; Calico/Flannel are omitted in favour of Cilium deployed immediately after bootstrap.
-- **Planned Additions:** The roadmap mirrors the ADRs and `MILESTONES.md`:
-  - **GitOps:** FluxCD for reconciling manifests in `clusters/homelab/`.
-  - **Networking:** Cilium as the primary CNI, replacing the default Flannel.
+- **GitOps:** FluxCD reconciles manifests in `clusters/homelab/`, managing Helm releases for the platform add-ons (Cilium, cert-manager, ExternalDNS, MetalLB, Longhorn, metrics-server) and providing the landing zone for future workloads. The optional Weave GitOps UI (`docs/weave-gitops-ui.md`) offers a read view of reconciliations.
+  - CRDs that are not bundled with their Helm charts (cert-manager, MetalLB) live under `clusters/homelab/infrastructure/crds/` so Flux applies them before rendering the HelmReleases that depend on them.
+- **Roadmap Additions:** The remaining platform goals mirror the ADRs and `MILESTONES.md`:
   - **Security:** Authentik, Vault + External Secrets Operator, OPA Gatekeeper, Falco, Trivy Operator.
   - **Observability:** Prometheus, Grafana, Loki, Jaeger, and Cilium Hubble.
   - **Access:** Cloudflare Tunnel for publishing internal services.
@@ -52,7 +52,10 @@ homelab/
 │       ├── terraform.tfvars   # Environment-specific secrets and SSH key reference
 │       └── variables.tf       # VM and installer inputs
 ├── clusters/
-│   └── homelab/               # Flux Kustomizations (to be populated)
+│   └── homelab/
+│       ├── flux-system/        # Flux controllers bootstrap overlay
+│       ├── infrastructure/     # GitOps-managed platform add-ons and sources
+│       └── apps/               # Flux Kustomizations per environment/workload (e.g., sample nginx)
 ├── apps/                      # Kubectl-applied smoke tests (e.g., sample nginx)
 ├── docs/
 │   ├── architecture.md        # This document

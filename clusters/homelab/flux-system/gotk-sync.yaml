@@ -1,0 +1,28 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: GitRepository
+metadata:
+  name: homelab
+  namespace: flux-system
+spec:
+  interval: 1m
+  ref:
+    branch: main
+  secretRef:
+    name: homelab-git
+  url: https://github.com/mppan821/homelab.git
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: homelab
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./clusters/homelab
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: homelab
+  timeout: 5m
+  wait: true
