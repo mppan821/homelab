@@ -31,6 +31,8 @@ spec:
       auth_enabled: false
       image:
         tag: 3.5.5
+      limits_config:
+        allow_structured_metadata: false
       persistence:
         enabled: true
         storageClassName: longhorn
