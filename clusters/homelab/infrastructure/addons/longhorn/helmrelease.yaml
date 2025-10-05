@@ -24,7 +24,7 @@ spec:
   values:
     persistence:
       defaultClass: true
-      defaultClassReplicaCount: 1
+      defaultClassReplicaCount: "1"
       reclaimPolicy: Delete
     defaultSettings:
       defaultDataPath: /var/lib/homelab-storage/longhorn
