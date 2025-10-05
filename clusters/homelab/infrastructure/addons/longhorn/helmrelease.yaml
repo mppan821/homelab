@@ -28,5 +28,5 @@ spec:
       reclaimPolicy: Delete
     defaultSettings:
       defaultDataPath: /var/lib/homelab-storage/longhorn
-      defaultReplicaCount: 1
-      createDefaultDiskLabeledNodes: false
+      defaultReplicaCount: "1"
+      createDefaultDiskLabeledNodes: "false"
