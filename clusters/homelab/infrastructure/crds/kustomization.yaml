@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.crds.yaml
   - https://github.com/metallb/metallb/config/crd?ref=v0.15.2
+  - https://github.com/longhorn/longhorn/releases/download/v1.10.0/longhorn.yaml

@@ -46,10 +46,12 @@ resource "null_resource" "control_plane_install" {
         sudo sed -i "/ swap / s/^/#/" /etc/fstab
         sudo hostnamectl set-hostname "${local.control_host.name}"
         sudo apt-get update -y
-        sudo apt-get install -y apt-transport-https ca-certificates curl gnupg2 software-properties-common
-        sudo mkdir -p /etc/apt/keyrings
+        sudo apt-get install -y --no-install-recommends ca-certificates curl gnupg2 software-properties-common
+        sudo install -m 0755 -d /etc/apt/keyrings
         curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.34/deb/Release.key | sudo gpg --dearmor --batch --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-        echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.34/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+        cat <<'EOF_KUBEREPO' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.34/deb/ /
+EOF_KUBEREPO
         sudo apt-get update -y
         sudo apt-get install -y kubelet kubeadm kubectl docker.io containerd
         sudo apt-mark hold kubelet kubeadm kubectl
@@ -73,7 +75,7 @@ resource "null_resource" "control_plane_install" {
         sudo chmod 600 $HOME/.kube/config
         sudo apt-get install -y curl gpg apt-transport-https
 
-        # Bootstrap Cilium so Flux can manage it afterward.
+        # Bootstrap Cilium so Flux can manage it afterwards.
         curl -fsSL https://packages.buildkite.com/helm-linux/helm-debian/gpgkey | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
         echo "deb [signed-by=/usr/share/keyrings/helm.gpg] https://packages.buildkite.com/helm-linux/helm-debian/any/ any main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
         sudo apt-get update
