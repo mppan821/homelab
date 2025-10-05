@@ -8,6 +8,7 @@ This document outlines the recommended directory structure for organizing the ho
 ├── docs/                           # Detailed documentation
 │   ├── architecture.md             # In-depth architecture details
 │   ├── bootstrap.md                # Step-by-step setup guide
+│   ├── feature-development.md      # Testing feature branches with Flux
 │   ├── weave-gitops-ui.md          # Optional Flux UI (Weave GitOps) instructions
 │   └── directory_structure.md      # This file
 ├── infrastructure/                 # Infrastructure as Code (IaC)

@@ -24,7 +24,7 @@ spec:
   values:
     persistence:
       defaultClass: true
-      defaultClassReplicaCount: 2
+      defaultClassReplicaCount: 1
       reclaimPolicy: Delete
     defaultSettings:
       defaultDataPath: /var/lib/longhorn
