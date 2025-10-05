@@ -8,5 +8,5 @@ resources:
   - metallb
   - metrics-server
   - kube-prometheus-stack
-  - loki-stack
+  - loki
   - weave-gitops
