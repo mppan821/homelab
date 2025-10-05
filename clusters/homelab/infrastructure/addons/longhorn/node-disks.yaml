@@ -8,7 +8,7 @@ spec:
   disks:
     ssd-disk:
       path: /var/lib/longhorn
-      allowScheduling: false
+      allowScheduling: true
       evictionRequested: false
       storageReserved: 0
       tags:
