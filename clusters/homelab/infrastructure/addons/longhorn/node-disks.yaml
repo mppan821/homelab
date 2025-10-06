@@ -1,0 +1,68 @@
+apiVersion: longhorn.io/v1beta2
+kind: Node
+metadata:
+  name: master-node
+  namespace: longhorn-system
+spec:
+  allowScheduling: false
+  disks:
+    ssd-disk:
+      path: /var/lib/longhorn
+      allowScheduling: false
+      evictionRequested: false
+      storageReserved: 0
+      tags:
+        - ssd
+    hdd-disk:
+      path: /var/lib/homelab-storage/longhorn
+      allowScheduling: true
+      evictionRequested: false
+      storageReserved: 0
+      tags:
+        - hdd
+---
+apiVersion: longhorn.io/v1beta2
+kind: Node
+metadata:
+  name: worker-node-1
+  namespace: longhorn-system
+spec:
+  allowScheduling: true
+  disks:
+    ssd-disk:
+      path: /var/lib/longhorn
+      allowScheduling: true
+      evictionRequested: false
+      storageReserved: 0
+      tags:
+        - ssd
+    hdd-disk:
+      path: /var/lib/homelab-storage/longhorn
+      allowScheduling: true
+      evictionRequested: false
+      storageReserved: 0
+      tags:
+        - hdd
+---
+apiVersion: longhorn.io/v1beta2
+kind: Node
+metadata:
+  name: worker-node-2
+  namespace: longhorn-system
+spec:
+  allowScheduling: true
+  disks:
+    ssd-disk:
+      path: /var/lib/longhorn
+      allowScheduling: true
+      evictionRequested: false
+      storageReserved: 0
+      tags:
+        - ssd
+    hdd-disk:
+      path: /var/lib/homelab-storage/longhorn
+      allowScheduling: true
+      evictionRequested: false
+      storageReserved: 0
+      tags:
+        - hdd

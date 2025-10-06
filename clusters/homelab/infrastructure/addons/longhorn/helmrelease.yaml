@@ -11,7 +11,7 @@ spec:
         kind: HelmRepository
         name: longhorn
         namespace: flux-system
-      version: 1.6.1
+      version: 1.10.0
   install:
     remediation:
       retries: -1
@@ -24,9 +24,28 @@ spec:
   values:
     persistence:
       defaultClass: true
-      defaultClassReplicaCount: 2
+      defaultClassReplicaCount: "1"
       reclaimPolicy: Delete
     defaultSettings:
-      defaultDataPath: /var/lib/longhorn
-      defaultReplicaCount: 2
-      createDefaultDiskLabeledNodes: false
+      defaultDataPath: /var/lib/homelab-storage/longhorn
+      defaultReplicaCount: "1"
+      createDefaultDiskLabeledNodes: "true"
+      defaultDiskConfig: |
+        [
+          {
+            "name": "ssd-disk",
+            "path": "/var/lib/longhorn",
+            "allowScheduling": false,
+            "evictionRequested": false,
+            "storageReserved": 0,
+            "tags": ["ssd"]
+          },
+          {
+            "name": "hdd-disk",
+            "path": "/var/lib/homelab-storage/longhorn",
+            "allowScheduling": true,
+            "evictionRequested": false,
+            "storageReserved": 0,
+            "tags": ["hdd"]
+          }
+        ]

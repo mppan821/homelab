@@ -4,7 +4,9 @@ resources:
   - cilium-helmrepository.yaml
   - cert-manager-helmrepository.yaml
   - external-dns-helmrepository.yaml
+  - grafana-helmrepository.yaml
+  - longhorn-helmrepository.yaml
   - metallb-helmrepository.yaml
   - metrics-server-helmrepository.yaml
-  - longhorn-helmrepository.yaml
+  - prometheus-community-helmrepository.yaml
   - weave-gitops-helmrepository.yaml

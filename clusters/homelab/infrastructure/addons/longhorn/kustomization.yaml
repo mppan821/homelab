@@ -3,3 +3,6 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - helmrelease.yaml
+  - node-labeler.yaml
+  - node-disks.yaml
+  - node-disks.yaml

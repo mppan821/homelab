@@ -44,15 +44,22 @@ resource "proxmox_vm_qemu" "cloud-init" {
   }
 
   disks {
-    scsi {
-      scsi0 {
-        disk {
-          size      = each.value.disk_size
-          storage   = each.value.storage
-          replicate = "true"
+      scsi {
+        scsi0 {
+          disk {
+            size      = each.value.disk_size
+            storage   = each.value.storage
+            replicate = "true"
+          }
+        }
+        scsi1 {
+          disk {
+            size      = each.value.data_disk_size
+            storage   = each.value.data_disk_storage
+            replicate = "false"
+          }
         }
       }
-    }
     ide {
       ide0 {
         cloudinit {

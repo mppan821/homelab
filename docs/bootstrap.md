@@ -68,12 +68,12 @@ terraform -chdir=infrastructure/terraform apply
 1. **Check VM status in Proxmox** – confirm all three VMs are running and reachable.
 2. **Validate cluster health:**
    ```bash
-   ssh -i ../../id_ed25519 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ubuntu@192.168.0.100 "kubectl get nodes -o wide"
+   ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ubuntu@192.168.0.100 "kubectl get nodes -o wide"
    ```
    Expect the control node and both workers to report `Ready` once kubeadm has joined the agents.
 3. **Retrieve kubeconfig:**
    ```bash
-   ssh -i ../../id_ed25519 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ubuntu@192.168.0.100 "sudo cat /etc/kubernetes/admin.conf" > kubeconfig
+   ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ubuntu@192.168.0.100 "sudo cat /etc/kubernetes/admin.conf" > kubeconfig
    kubectl get nodes -o wide
    ```
    Optionally copy `kubeconfig` to `~/.kube/config` if you want kubectl to pick it up by default.
@@ -136,6 +136,22 @@ Login to WeaveWorks:
 kubectl port-forward -n weave-gitops svc/weave-gitops 9001:9001
 ```
 Visit <http://localhost:9001> and log in with the admin password you selected. Default is `admin/changeme` if you didn't change the password.
+
+Access Longhorn:
+```bash
+kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80
+```
+Visit <http://localhost:8080>.
+
+Access Grafana:
+```bash
+kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3001:80
+
+# Get username and password
+kubectl get secret kube-prometheus-stack-grafana -n monitoring -o jsonpath='{.data.admin-user}' | base64 --decode; echo                 
+kubectl get secret kube-prometheus-stack-grafana -n monitoring -o jsonpath='{.data.admin-password}' | base64 --decode; echo
+```
+Visit <http://localhost:3001>.
 
 Refer to `docs/adr/004-terraform-kubeadm-bootstrap.md` for the detailed rationale behind automating kubeadm with Terraform provisioners.
 

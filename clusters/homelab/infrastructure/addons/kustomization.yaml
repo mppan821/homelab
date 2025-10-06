@@ -7,4 +7,6 @@ resources:
   - longhorn
   - metallb
   - metrics-server
+  - kube-prometheus-stack
+  - loki
   - weave-gitops
